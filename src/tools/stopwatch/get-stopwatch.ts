@@ -1,0 +1,62 @@
+import {
+    PartialToolResult,
+    ResultStatus,
+    Tool,
+    ToolParameters,
+    ToolParameterProperty
+} from '@johannes.latzel/llm-chat';
+import { StopwatchPool } from '../../lib/stopwatch-pool.js';
+import prettyMilliseconds from 'pretty-ms';
+
+export class GetStopwatchTool extends Tool {
+    constructor(private stopwatchPool: StopwatchPool) {
+        super(
+            'get_stopwatch',
+            'Returns the current elapsed time of a stopwatch as a human-readable string (e.g. "1h 30m"). Returns an error if elapsed time is 100 hours or more.',
+            new ToolParameters(
+                {
+                    stopwatch_id: new ToolParameterProperty('The ID of the stopwatch to check.')
+                },
+                ['stopwatch_id']
+            )
+        );
+    }
+
+    protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
+        const swId = args.stopwatch_id;
+        if (typeof swId !== 'string' || !swId.trim()) {
+            return {
+                result: 'stopwatch_id must be a non-empty string.',
+                status: ResultStatus.Error
+            };
+        }
+
+        try {
+            const sw = await this.stopwatchPool.get(swId);
+            if (!sw) {
+                return {
+                    result: `Error: No stopwatch found with id '${swId}'`,
+                    status: ResultStatus.Error
+                };
+            }
+
+            const elapsed = await sw.elapsedMs();
+            if (elapsed >= 360_000_000) {
+                return {
+                    result: 'Error: Elapsed time is 100 hours or more.',
+                    status: ResultStatus.Error
+                };
+            }
+
+            return {
+                result: JSON.stringify({
+                    stopwatch_id: swId,
+                    elapsed: prettyMilliseconds(elapsed)
+                }),
+                status: ResultStatus.Success
+            };
+        } catch (e) {
+            return { result: (e as Error).message, status: ResultStatus.Error };
+        }
+    }
+}

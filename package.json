@@ -1,0 +1,81 @@
+{
+    "name": "@johannes.latzel/llm-chat-time",
+    "version": "0.1.0",
+    "description": "Time tool for the llm-chat ecosystem",
+    "license": "MIT",
+    "files": [
+        "dist/",
+        "README.md",
+        "LICENSE"
+    ],
+    "author": "Johannes B. Latzel",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/johanneslatzel/llm-chat-time.git"
+    },
+    "bugs": {
+        "url": "https://github.com/johanneslatzel/llm-chat-time/issues"
+    },
+    "homepage": "https://github.com/johanneslatzel/llm-chat-time#readme",
+    "keywords": [
+        "llm",
+        "chat",
+        "time",
+        "datetime",
+        "tool"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.build.json",
+        "lint": "eslint . --max-warnings 0",
+        "format": "prettier --write 'docs/**/*.md' 'src/**/*.ts'",
+        "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
+        "test": "vitest --exclude 'dist/**'",
+        "test:coverage": "vitest run --coverage --exclude 'dist/**'",
+        "prepare": "husky"
+    },
+    "lint-staged": {
+        "src/**/*.ts": [
+            "prettier --write",
+            "eslint --max-warnings 0 --no-warn-ignored",
+            "vitest related --run"
+        ]
+    },
+    "dependencies": {
+        "@johannes.latzel/llm-chat": "^0.1.2",
+        "async-mutex": "^0.5.0",
+        "parse-duration-ms": "^0.1.0",
+        "pretty-ms": "^9.3.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^9.24.0",
+        "@types/node": "^22.14.1",
+        "@types/uuid": "^10.0.0",
+        "@typescript-eslint/eslint-plugin": "^8.60.0",
+        "@typescript-eslint/parser": "^8.60.0",
+        "@vitest/coverage-v8": "^4.1.8",
+        "concurrently": "^9.1.2",
+        "eslint": "^9.24.0",
+        "eslint-config-prettier": "^10.1.2",
+        "eslint-plugin-n": "^17.17.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^15.5.1",
+        "prettier": "^3.5.3",
+        "typescript": "^6.0.3",
+        "vitest": "^4.1.8"
+    }
+}
