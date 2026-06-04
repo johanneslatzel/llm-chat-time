@@ -1,13 +1,13 @@
 import { Pool } from './pool.js';
-import { Timer } from './timer.js';
+import { Timer, type TimerService } from './timer.js';
 
 export class TimerPool extends Pool<Timer> {
-    constructor() {
+    constructor(private timerService: TimerService) {
         super('timer');
     }
 
     protected _create(id: string): Timer {
-        return new Timer(id);
+        return new Timer(id, this.timerService);
     }
 
     protected async onRemove(timer: Timer): Promise<void> {

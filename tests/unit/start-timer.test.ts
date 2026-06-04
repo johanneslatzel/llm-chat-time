@@ -2,12 +2,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StartTimerTool, TimerPool } from '../../src/index.js';
 import { ResultStatus } from '@johannes.latzel/llm-chat';
 
+const mockService = { interrupt: vi.fn(), chatImpl: { user: vi.fn() } };
+
 describe('StartTimerTool', () => {
     let timerPool: TimerPool;
     let tool: StartTimerTool;
 
     beforeEach(() => {
-        timerPool = new TimerPool();
+        timerPool = new TimerPool(mockService);
         tool = new StartTimerTool(timerPool);
     });
 

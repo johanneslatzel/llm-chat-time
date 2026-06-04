@@ -7,19 +7,18 @@ export interface TimerService {
 }
 
 export class Timer {
-    readonly id: string;
     durationMs = 0;
     remaining = 0;
     running = false;
     reminder: string | undefined = undefined;
-    service?: TimerService;
     private _startedAt: number | null = null;
     private _tickInterval: ReturnType<typeof setInterval> | null = null;
     private readonly mutex = new Mutex();
 
-    constructor(id: string) {
-        this.id = id;
-    }
+    constructor(
+        readonly id: string,
+        readonly service: TimerService
+    ) {}
 
     async set(timeStr: string): Promise<void> {
         return this.mutex.runExclusive(() => {
@@ -66,8 +65,7 @@ export class Timer {
     async remainingMs(): Promise<number> {
         return this.mutex.runExclusive(() => {
             if (!this.running) return this.remaining;
-            const elapsed = Date.now() - this._startedAt!;
-            return Math.max(0, this.remaining - elapsed);
+            return Math.max(0, this.remaining);
         });
     }
 
@@ -93,16 +91,13 @@ export class Timer {
                 clearInterval(this._tickInterval!);
                 this._tickInterval = null;
                 this.running = false;
-                const svc = this.service;
-                if (svc) {
-                    svc.interrupt(() => {
-                        const msg =
-                            this.reminder !== undefined
-                                ? `Timer "${this.id}" expired. Reminder: ${this.reminder}`
-                                : `Timer "${this.id}" expired.`;
-                        svc.chatImpl.user(msg);
-                    });
-                }
+                this.service.interrupt(() => {
+                    const msg =
+                        this.reminder !== undefined
+                            ? `Timer "${this.id}" expired. Reminder: ${this.reminder}`
+                            : `Timer "${this.id}" expired.`;
+                    this.service.chatImpl.user(msg);
+                });
             }
         }, 100);
     }
