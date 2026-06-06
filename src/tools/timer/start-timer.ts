@@ -7,7 +7,11 @@ import {
 } from '@johannes.latzel/llm-chat';
 import { TimerPool } from '../../lib/timer-pool.js';
 
+/** Tool that starts a countdown timer, with an optional reminder. */
 export class StartTimerTool extends Tool {
+    /**
+     * @param timerPool - The pool containing the timer to start.
+     */
     constructor(private timerPool: TimerPool) {
         super(
             'start_timer',
@@ -24,6 +28,7 @@ export class StartTimerTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const timerId = args.timer_id;
         if (typeof timerId !== 'string' || !timerId.trim()) {

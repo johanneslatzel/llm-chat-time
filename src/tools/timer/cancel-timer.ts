@@ -7,7 +7,11 @@ import {
 } from '@johannes.latzel/llm-chat';
 import { TimerPool } from '../../lib/timer-pool.js';
 
+/** Tool that removes a timer by id. */
 export class RemoveTimerTool extends Tool {
+    /**
+     * @param timerPool - The pool to remove the timer from.
+     */
     constructor(private timerPool: TimerPool) {
         super(
             'remove_timer',
@@ -21,6 +25,7 @@ export class RemoveTimerTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const timerId = args.timer_id;
         if (typeof timerId !== 'string' || !timerId.trim()) {

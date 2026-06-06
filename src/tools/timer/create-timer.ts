@@ -1,7 +1,11 @@
 import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes.latzel/llm-chat';
 import { TimerPool } from '../../lib/timer-pool.js';
 
+/** Tool that creates a new stopped timer with an auto-incremented id. */
 export class CreateTimerTool extends Tool {
+    /**
+     * @param timerPool - The pool that will manage created timers.
+     */
     constructor(private timerPool: TimerPool) {
         super(
             'create_timer',
@@ -10,6 +14,7 @@ export class CreateTimerTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(_args: Record<string, unknown>): Promise<PartialToolResult> {
         try {
             const timer = await this.timerPool.create();

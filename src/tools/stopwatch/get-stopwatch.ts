@@ -8,7 +8,11 @@ import {
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 import prettyMilliseconds from 'pretty-ms';
 
+/** Tool that returns the current elapsed time of a stopwatch. */
 export class GetStopwatchTool extends Tool {
+    /**
+     * @param stopwatchPool - The pool to look up the stopwatch from.
+     */
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'get_stopwatch',
@@ -22,6 +26,7 @@ export class GetStopwatchTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const swId = args.stopwatch_id;
         if (typeof swId !== 'string' || !swId.trim()) {

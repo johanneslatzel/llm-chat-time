@@ -1,25 +1,49 @@
 import { Mutex } from 'async-mutex';
 import parseDuration from 'parse-duration-ms';
 
+/** Service object that allows a {@link Timer} to interact with the chat layer. */
 export interface TimerService {
+    /**
+     * Interrupts the chat flow to surface a message.
+     * @param fn - Callback that typically calls `chatImpl.user()`.
+     * @param sendAfter - Whether the interruption should be sent after the current turn.
+     */
     interrupt(fn: () => void | Promise<void>, sendAfter?: boolean): Promise<void>;
+    /** Allows injecting a message as if the user had sent it. */
     chatImpl: { user(content: string): void };
 }
 
+/**
+ * A countdown timer backed by a {@link TimerService} so that it can surface
+ * a message when time runs out.
+ */
 export class Timer {
+    /** Total duration of the timer in milliseconds. */
     durationMs = 0;
+    /** Remaining time in milliseconds. */
     remaining = 0;
+    /** Whether the timer is currently counting down. */
     running = false;
+    /** Optional text to surface when the timer expires. */
     reminder: string | undefined = undefined;
     private _startedAt: number | null = null;
     private _tickInterval: ReturnType<typeof setInterval> | null = null;
     private readonly mutex = new Mutex();
 
+    /**
+     * @param id      - Unique identifier for this timer.
+     * @param service - Service used to interrupt the chat when the timer expires.
+     */
     constructor(
         readonly id: string,
         readonly service: TimerService
     ) {}
 
+    /**
+     * Sets the timer duration from a human-readable string (e.g. `"5m"`, `"1h30m"`).
+     * @throws If the timer is already running.
+     * @throws If the parsed duration is zero or negative.
+     */
     async set(timeStr: string): Promise<void> {
         return this.mutex.runExclusive(() => {
             if (this.running) {
@@ -34,6 +58,11 @@ export class Timer {
         });
     }
 
+    /**
+     * Starts (or resumes) the countdown.
+     * @param reminder - Optional text to surface when the timer expires.
+     * @throws If no duration has been set or the timer has already expired.
+     */
     async start(reminder?: string): Promise<void> {
         return this.mutex.runExclusive(() => {
             if (this.running) return;
@@ -49,6 +78,10 @@ export class Timer {
         });
     }
 
+    /**
+     * Pauses the countdown, preserving the remaining time so it can be resumed later.
+     * @throws If the timer is not currently running.
+     */
     async pause(): Promise<void> {
         return this.mutex.runExclusive(() => {
             if (!this.running) {
@@ -62,6 +95,7 @@ export class Timer {
         });
     }
 
+    /** Returns the remaining time in milliseconds. */
     async remainingMs(): Promise<number> {
         return this.mutex.runExclusive(() => {
             if (!this.running) return this.remaining;
@@ -69,6 +103,7 @@ export class Timer {
         });
     }
 
+    /** Resets the timer to its initial (idle) state. */
     async reset(): Promise<void> {
         return this.mutex.runExclusive(() => {
             this._stopTick();

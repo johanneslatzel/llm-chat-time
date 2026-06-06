@@ -1,5 +1,6 @@
 import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes.latzel/llm-chat';
 
+/** Tool that returns the current date, time, and timezone information. */
 export class GetDateTimeTool extends Tool {
     constructor() {
         super(
@@ -9,6 +10,7 @@ export class GetDateTimeTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(_args: Record<string, unknown>): Promise<PartialToolResult> {
         const now = new Date();
         const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;

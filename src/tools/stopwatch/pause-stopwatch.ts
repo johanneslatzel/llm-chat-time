@@ -7,7 +7,11 @@ import {
 } from '@johannes.latzel/llm-chat';
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 
+/** Tool that pauses a running stopwatch, preserving its elapsed time. */
 export class PauseStopwatchTool extends Tool {
+    /**
+     * @param stopwatchPool - The pool containing the stopwatch to pause.
+     */
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'pause_stopwatch',
@@ -21,6 +25,7 @@ export class PauseStopwatchTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const swId = args.stopwatch_id;
         if (typeof swId !== 'string' || !swId.trim()) {

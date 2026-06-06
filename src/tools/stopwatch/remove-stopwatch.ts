@@ -7,7 +7,11 @@ import {
 } from '@johannes.latzel/llm-chat';
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 
+/** Tool that removes a stopwatch by id. */
 export class RemoveStopwatchTool extends Tool {
+    /**
+     * @param stopwatchPool - The pool to remove the stopwatch from.
+     */
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'remove_stopwatch',
@@ -21,6 +25,7 @@ export class RemoveStopwatchTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const swId = args.stopwatch_id;
         if (typeof swId !== 'string' || !swId.trim()) {

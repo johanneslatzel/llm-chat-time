@@ -7,6 +7,7 @@ import {
 } from '@johannes.latzel/llm-chat';
 import prettyMilliseconds from 'pretty-ms';
 
+/** Tool that calculates the difference between two ISO 8601 datetime strings. */
 export class DiffDateTimeTool extends Tool {
     constructor() {
         super(
@@ -26,6 +27,7 @@ export class DiffDateTimeTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const a = args.a;
         if (typeof a !== 'string' || !a.trim()) {

@@ -2,7 +2,11 @@ import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 import prettyMilliseconds from 'pretty-ms';
 
+/** Tool that lists all stopwatches with their current state and elapsed time. */
 export class ListStopwatchesTool extends Tool {
+    /**
+     * @param stopwatchPool - The pool to list stopwatches from.
+     */
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'list_stopwatches',
@@ -11,6 +15,7 @@ export class ListStopwatchesTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(_args: Record<string, unknown>): Promise<PartialToolResult> {
         try {
             const stopwatches = await this.stopwatchPool.list();

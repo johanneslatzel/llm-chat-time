@@ -7,7 +7,11 @@ import {
 } from '@johannes.latzel/llm-chat';
 import { TimerPool } from '../../lib/timer-pool.js';
 
+/** Tool that pauses a running countdown timer. */
 export class PauseTimerTool extends Tool {
+    /**
+     * @param timerPool - The pool containing the timer to pause.
+     */
     constructor(private timerPool: TimerPool) {
         super(
             'pause_timer',
@@ -21,6 +25,7 @@ export class PauseTimerTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const timerId = args.timer_id;
         if (typeof timerId !== 'string' || !timerId.trim()) {

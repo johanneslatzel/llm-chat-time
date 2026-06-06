@@ -2,7 +2,11 @@ import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes
 import { TimerPool } from '../../lib/timer-pool.js';
 import prettyMilliseconds from 'pretty-ms';
 
+/** Tool that lists all timers with their current state and remaining time. */
 export class ListTimersTool extends Tool {
+    /**
+     * @param timerPool - The pool to list timers from.
+     */
     constructor(private timerPool: TimerPool) {
         super(
             'list_timers',
@@ -11,6 +15,7 @@ export class ListTimersTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(_args: Record<string, unknown>): Promise<PartialToolResult> {
         try {
             const timers = await this.timerPool.list();

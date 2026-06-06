@@ -8,7 +8,11 @@ import {
 import { TimerPool } from '../../lib/timer-pool.js';
 import parseDuration from 'parse-duration-ms';
 
+/** Tool that sets the duration of a non-running timer. */
 export class SetTimerTool extends Tool {
+    /**
+     * @param timerPool - The pool containing the timer to configure.
+     */
     constructor(private timerPool: TimerPool) {
         super(
             'set_timer',
@@ -25,6 +29,7 @@ export class SetTimerTool extends Tool {
         );
     }
 
+    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const timerId = args.timer_id;
         if (typeof timerId !== 'string' || !timerId.trim()) {
