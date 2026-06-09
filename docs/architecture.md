@@ -8,13 +8,17 @@
 
 ```
 src/
-├── index.ts               barrel exports (15 tools, 4 domain classes, 2 utilities)
+├── index.ts               barrel exports
 ├── lib/
-│   ├── duration.ts        parseTime / formatDuration utilities
 │   ├── stopwatch.ts       Stopwatch domain class
 │   ├── stopwatch-pool.ts  StopwatchPool (manages stopwatches)
 │   ├── timer.ts           Timer domain class
 │   └── timer-pool.ts      TimerPool (manages timers)
+├── packages/
+│   ├── date-time-package.ts  DateTimePackage (2 tools)
+│   ├── stopwatch-package.ts  StopwatchPackage (7 tools)
+│   ├── timer-package.ts      TimerPackage (7 tools)
+│   └── time-package.ts       TimePackage (composite, 16 tools)
 └── tools/                 15 tool classes (one per file)
 ```
 
@@ -54,7 +58,7 @@ create_timer → IDLE → set_timer → STOPPED → start_timer → RUNNING ─�
                                         │   (timer expires)          │ start_timer
                                         └──── timer expires ←────────┴────────────┘
                                               │
-                                              ├── Timer.service.interrupt(...) (if set)
+                                              ├── Timer.service.notifyUser(...) (if set)
                                               │
                                               ↓
                                        stays in pool (running=false, remaining=0)
@@ -67,25 +71,31 @@ Timers count down from the set duration. On expiry they remain in the pool in a 
 
 ### Timer expiry
 
-The `Timer` class has an optional `service` property. When set, expiry calls `service.interrupt()` which injects a user message and triggers the LLM to respond. `TimerPool` has no involvement in expiry — it is purely a container.
+The `Timer` class has a `readonly service` property of type `TimerService`. When the timer expires, it calls `service.notifyUser(msg)`. The service is injected via `TimerPool` — each timer created by the pool receives the same service instance.
+
+`TimerPool` accepts either a `TimerService` object or a callback function (shorthand for `{ notifyUser: fn }`). See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for usage examples.
+
+### Package classes
+
+The `ToolPackage` interface (from `@johannes.latzel/llm-chat`) groups related tools for registration:
 
 ```typescript
-const pool = new TimerPool();
-const timer = await pool.createTimer();
-timer.service = {
-    interrupt: (fn) => service.interrupt(fn),
-    chatImpl: service.chatImpl,
-};
+interface ToolPackage {
+    tools(): Tool[];
+    dispose?(): void | Promise<void>;
+}
 ```
 
-When using tools, get the `Timer` from the pool after creation:
+Four implementations exist:
 
-```typescript
-const createResult = await createTimer.execute({});
-const { timer_id } = JSON.parse(createResult.result);
-const timer = await pool.getTimer(timer_id);
-timer.service = { interrupt, chatImpl };
-```
+| Class | Tools | Constructor | `dispose()` |
+|-------|-------|-------------|-------------|
+| `DateTimePackage` | 2 (`GetDateTime`, `DiffDateTime`) | none | not implemented |
+| `StopwatchPackage` | 7 (create, start, stop, pause, get, list, remove) | optional `StopwatchPool` | not implemented |
+| `TimerPackage` | 7 (create, set, start, pause, get, list, remove) | optional `TimerPool` | not implemented |
+| `TimePackage` | 16 (all of the above) | optional `TimerPool`, `StopwatchPool` | implemented — delegates to sub-packages |
+
+`TimePackage` is a composite that wraps the other three. It aggregates all 16 tools via `flatMap` and provides `dispose()` for lifecycle cleanup.
 
 ### Tick accuracy
 

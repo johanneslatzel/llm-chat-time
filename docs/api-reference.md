@@ -12,7 +12,7 @@ All tools return a `PartialToolResult` with shape:
 }
 ```
 
-Time values (`duration`, `remaining`, `elapsed`) are returned as strings in `d:HH:mm:ss.ms` format (e.g. `"0:00:05:00.000"` for 5 minutes, `"1:01:30:00.000"` for 25h30m).
+Time values (`duration`, `remaining`, `elapsed`) are returned as human-readable strings via `pretty-ms` (e.g. `"5m"`, `"1h 30m"`, `"12.34s"`).
 
 ## GetDateTimeTool
 
@@ -39,7 +39,7 @@ Calculates the difference between two ISO 8601 datetime strings (`a - b`).
 | `a`       | string | yes      | First datetime (ISO 8601).                     |
 | `b`       | string | yes      | Second datetime (ISO 8601). Result is `a - b`. |
 
-**Returns:** `{ a, b, difference }` where `difference` is in `d:HH:mm:ss.ms` format.
+**Returns:** `{ a, b, difference }` where `difference` is a human-readable duration string (e.g. `"1d 1h 30m"`).
 
 ---
 
@@ -110,7 +110,7 @@ Pauses a running stopwatch. Elapsed time is preserved; resume with `start_stopwa
 
 ### GetStopwatchTool
 
-Returns the current elapsed time of a stopwatch in `d:HH:mm:ss.ms` format. Returns an error if elapsed time is 100 hours or more.
+Returns the current elapsed time of a stopwatch as a human-readable string.
 
 **Tool name:** `get_stopwatch`
 
@@ -120,7 +120,7 @@ Returns the current elapsed time of a stopwatch in `d:HH:mm:ss.ms` format. Retur
 | -------------- | ------ | -------- | ----------------------------- |
 | `stopwatch_id` | string | yes      | ID of the stopwatch to check. |
 
-**Returns:** `{ stopwatch_id, elapsed: "d:HH:mm:ss.ms" }`
+**Returns:** `{ stopwatch_id, elapsed: "5m 30s" }`
 
 ### ListStopwatchesTool
 
@@ -154,14 +154,12 @@ Seven tools for creating and managing countdown timers. Timers count down from a
 
 ### TimerPool
 
-Manages all timers — create, list, get, remove, clear. Timer expiry behavior is handled by the `Timer` itself via its `service` property.
+Manages all timers — create, list, get, remove, clear. Timer expiry behavior is handled by the `Timer` itself via its `service` property, which is injected through the pool's constructor.
 
 ```typescript
 import { TimerPool } from 'llm-chat-time';
 
-const pool = new TimerPool();
-const timer = await pool.createTimer();
-timer.service = myService; // expiry calls myService.interrupt(...)
+const pool = new TimerPool(myTimerService);
 ```
 
 ### Timer
@@ -176,26 +174,24 @@ const timer = new Timer('my-timer');
 
 **Properties:**
 
-| Property    | Type                                            | Description                                      |
-|-------------|-------------------------------------------------|--------------------------------------------------|
-| `id`        | `string`                                        | Timer identifier.                                |
-| `durationMs`| `number`                                        | Duration in milliseconds set via `set()` or tool.|
-| `remaining` | `number`                                        | Remaining milliseconds.                          |
-| `running`   | `boolean`                                       | Whether the timer is currently counting down.    |
-| `reminder`  | `string \| undefined`                           | Reminder text set at start.                      |
-| `service`   | `{ interrupt, chatImpl } \| undefined`          | Optional service for expiry interrupt.           |
+| Property    | Type                        | Description                                      |
+|-------------|-----------------------------|--------------------------------------------------|
+| `id`        | `string`                    | Timer identifier.                                |
+| `durationMs`| `number`                    | Duration in milliseconds set via `set()` or tool.|
+| `remaining` | `number`                    | Remaining milliseconds.                          |
+| `running`   | `boolean`                   | Whether the timer is currently counting down.    |
+| `reminder`  | `string \| undefined`       | Reminder text set at start.                      |
+| `service`   | `TimerService \| undefined` | Service injected via `TimerPool` for expiry notification. |
 
-**`service` property:**
-
-When set, expiry calls `service.interrupt(fn)` which runs `fn` inside the send mutex and triggers the LLM to respond. The `fn` injects a user message via `service.chatImpl.user()`.
+**`TimerService` interface:**
 
 ```typescript
-timer.service = {
-    interrupt: (fn) => service.interrupt(fn),
-    chatImpl: service.chatImpl,
-};
-// On expiry: service.interrupt(() => service.chatImpl.user("Timer \"timer-1\" expired. Reminder: ..."))
+interface TimerService {
+    notifyUser(content: string): Promise<void>;
+}
 ```
+
+When the timer expires, it calls `service.notifyUser(msg)`. See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for wiring examples.
 
 ### CreateTimerTool
 
@@ -277,21 +273,65 @@ Lists all timers with their current state and remaining time.
 
 ---
 
-## Duration Utilities
+## Package classes
 
-Exported for convenience:
+The package classes group related tools for registration with the `llm-chat` framework. All implement the `ToolPackage` interface from `@johannes.latzel/llm-chat`.
+
+### DateTimePackage
+
+Groups the two datetime tools. No pools required.
 
 ```typescript
-import { parseTime, formatDuration } from 'llm-chat-time';
+import { DateTimePackage } from 'llm-chat-time';
+const pkg = new DateTimePackage();
+const tools = pkg.tools(); // [GetDateTimeTool, DiffDateTimeTool]
 ```
 
-- `parseTime("HH:mm:ss")` → milliseconds (number)
-- `formatDuration(ms)` → `"d:HH:mm:ss.ms"` string
+- **Tools:** `GetDateTimeTool`, `DiffDateTimeTool` (2 tools)
+- **Constructor:** no parameters
+- **`dispose()`:** not implemented
 
----
+### StopwatchPackage
 
-## Environment Variables
+Groups the seven stopwatch tools. Creates a default `StopwatchPool` if none is provided.
 
-| Variable            | Default | Description                                        |
-| ------------------- | ------- | -------------------------------------------------- |
-| `TIMER_INTERVAL_MS` | `100`   | Tick interval for timer countdown in milliseconds. |
+```typescript
+import { StopwatchPackage } from 'llm-chat-time';
+const pkg = new StopwatchPackage();
+// or with an existing pool:
+const pkg = new StopwatchPackage(myPool);
+```
+
+- **Tools:** create, start, stop, pause, get, list, remove (7 tools)
+- **Constructor:** optional `StopwatchPool`
+- **`dispose()`:** not implemented
+
+### TimerPackage
+
+Groups the seven timer tools. Creates a default `TimerPool` (with a `console.log`-based expiry handler) if none is provided.
+
+```typescript
+import { TimerPackage } from 'llm-chat-time';
+const pkg = new TimerPackage();
+// or with an existing pool:
+const pkg = new TimerPackage(myPool);
+```
+
+- **Tools:** create, set, start, pause, get, list, remove (7 tools)
+- **Constructor:** optional `TimerPool`
+- **`dispose()`:** not implemented
+
+### TimePackage
+
+Composite package that wraps `DateTimePackage`, `StopwatchPackage`, and `TimerPackage`. Aggregates all 16 tools.
+
+```typescript
+import { TimePackage } from 'llm-chat-time';
+const pkg = new TimePackage();
+// or with existing pools:
+const pkg = new TimePackage(timerPool, stopwatchPool);
+```
+
+- **Tools:** all 16 tools from the three sub-packages
+- **Constructor:** optional `TimerPool`, optional `StopwatchPool`
+- **`dispose()`:** implemented — calls `dispose?.()` on each sub-package

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Timer } from '../../src/index.js';
 
-const mockService = { interrupt: vi.fn(), chatImpl: { user: vi.fn() } };
+const mockService = { notifyUser: vi.fn().mockResolvedValue(undefined) };
 
 describe('Timer', () => {
     it('creates a stopped timer with given id', () => {
@@ -118,45 +118,46 @@ describe('Timer', () => {
         expect(timer.running).toBe(false);
     });
 
-    it('does not call service interrupt when paused', async () => {
-        const interrupt = vi.fn();
-        const timer = new Timer('timer-1', { interrupt, chatImpl: { user: vi.fn() } });
+    it('does not call notifyUser when paused before expiry', async () => {
+        const notifyUser = vi.fn().mockResolvedValue(undefined);
+        const timer = new Timer('timer-1', { notifyUser });
         await timer.set('1s');
         await timer.start();
         await timer.pause();
         await new Promise((resolve) => setTimeout(resolve, 200));
-        expect(interrupt).not.toHaveBeenCalled();
+        expect(notifyUser).not.toHaveBeenCalled();
     });
 
-    it('does not call service interrupt when reset', async () => {
-        const interrupt = vi.fn();
-        const timer = new Timer('timer-1', { interrupt, chatImpl: { user: vi.fn() } });
+    it('does not call notifyUser when reset before expiry', async () => {
+        const notifyUser = vi.fn().mockResolvedValue(undefined);
+        const timer = new Timer('timer-1', { notifyUser });
         await timer.set('1s');
         await timer.start();
         await timer.reset();
         await new Promise((resolve) => setTimeout(resolve, 200));
-        expect(interrupt).not.toHaveBeenCalled();
+        expect(notifyUser).not.toHaveBeenCalled();
     });
 
-    it('calls service interrupt with reminder on expiry', async () => {
-        const user = vi.fn();
-        const interrupt = vi.fn(async (fn: () => void) => { fn(); });
-        const timer = new Timer('timer-1', { interrupt, chatImpl: { user } });
+    it('calls notifyUser with reminder on expiry', async () => {
+        const notifyUser = vi.fn().mockResolvedValue(undefined);
+        const timer = new Timer('timer-1', { notifyUser });
         await timer.set('1s');
         await timer.start('pasta is ready');
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        expect(interrupt).toHaveBeenCalledTimes(1);
-        expect(user).toHaveBeenCalledWith('Timer "timer-1" expired. Reminder: pasta is ready');
+        expect(notifyUser).toHaveBeenCalledTimes(1);
+        expect(notifyUser).toHaveBeenCalledWith(
+            'Timer "timer-1" expired. Reminder: pasta is ready'
+        );
     });
 
-    it('calls service interrupt without reminder', async () => {
-        const user = vi.fn();
-        const interrupt = vi.fn(async (fn: () => void) => { fn(); });
-        const timer = new Timer('timer-1', { interrupt, chatImpl: { user } });
+    it('calls notifyUser without reminder', async () => {
+        const notifyUser = vi.fn().mockResolvedValue(undefined);
+        const timer = new Timer('timer-1', { notifyUser });
         await timer.set('1s');
         await timer.start();
         await new Promise((resolve) => setTimeout(resolve, 1200));
-        expect(user).toHaveBeenCalledWith('Timer "timer-1" expired.');
+        expect(notifyUser).toHaveBeenCalledTimes(1);
+        expect(notifyUser).toHaveBeenCalledWith('Timer "timer-1" expired.');
     });
 
     describe('interval callback coverage', () => {
@@ -182,6 +183,34 @@ describe('Timer', () => {
             await timer.pause();
             vi.advanceTimersByTime(100);
             expect(timer.running).toBe(false);
+        });
+
+        it('clamps remaining to 0 when pause exceeds remaining', async () => {
+            vi.useFakeTimers();
+            const timer = new Timer('timer-1', mockService);
+            await timer.set('50ms');
+            await timer.start();
+            vi.advanceTimersByTime(60);
+            await timer.pause();
+            expect(timer.remaining).toBe(0);
+        });
+
+        it('tick callback early return when interval fires after stop', async () => {
+            let tickCallback: () => void;
+            vi.spyOn(globalThis, 'setInterval').mockImplementation((cb: () => void) => {
+                tickCallback = cb;
+                return 123 as unknown as ReturnType<typeof setInterval>;
+            });
+
+            const timer = new Timer('timer-1', mockService);
+            await timer.set('1m');
+            await timer.start();
+
+            await timer.pause();
+            tickCallback!();
+
+            expect(timer.running).toBe(false);
+            vi.restoreAllMocks();
         });
     });
 });

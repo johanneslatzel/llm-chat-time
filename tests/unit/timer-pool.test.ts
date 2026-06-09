@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { TimerPool } from '../../src/index.js';
 
-const mockService = { interrupt: vi.fn(), chatImpl: { user: vi.fn() } };
+const mockService = { notifyUser: vi.fn().mockResolvedValue(undefined) };
 
 describe('TimerPool', () => {
 
@@ -53,5 +53,13 @@ describe('TimerPool', () => {
         await pool.create();
         await pool.clearAll();
         expect(await pool.list()).toHaveLength(0);
+    });
+
+    it('accepts callback shorthand and wraps it as notifyUser', async () => {
+        const fn = vi.fn().mockResolvedValue(undefined);
+        const pool = new TimerPool(fn);
+        const timer = await pool.create();
+        await timer.service.notifyUser('hello');
+        expect(fn).toHaveBeenCalledWith('hello');
     });
 });

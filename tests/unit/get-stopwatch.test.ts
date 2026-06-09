@@ -34,12 +34,14 @@ describe('GetStopwatchTool', () => {
         expect(result.status).toBe(ResultStatus.Error);
     });
 
-    it('returns error for elapsed >= 100 hours', async () => {
+    it('returns elapsed time for values >= 100 hours', async () => {
         const sw = await stopwatchPool.create();
         vi.spyOn(sw, 'elapsedMs').mockResolvedValue(360_000_000);
         const result = await tool.execute({ stopwatch_id: sw.id });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('100 hours');
+        expect(result.status).toBe(ResultStatus.Success);
+        const data = JSON.parse(result.result);
+        expect(data.stopwatch_id).toBe(sw.id);
+        expect(data.elapsed).toMatch(/^\d+d \d+h/);
     });
 
     it('returns error when elapsedMs throws', async () => {

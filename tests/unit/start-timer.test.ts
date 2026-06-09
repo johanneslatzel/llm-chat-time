@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StartTimerTool, TimerPool } from '../../src/index.js';
 import { ResultStatus } from '@johannes.latzel/llm-chat';
 
-const mockService = { interrupt: vi.fn(), chatImpl: { user: vi.fn() } };
+const mockService = { notifyUser: vi.fn().mockResolvedValue(undefined) };
 
 describe('StartTimerTool', () => {
     let timerPool: TimerPool;

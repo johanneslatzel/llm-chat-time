@@ -28,7 +28,7 @@ const result = await tool.execute({
     a: '2025-01-15T10:30:00.000Z',
     b: '2025-01-14T10:30:00.000Z'
 });
-console.log(result.result); // {"difference": "1:00:00:00.000"}
+console.log(result.result); // {"difference": "1d"}
 ```
 
 ### Use a stopwatch
@@ -65,7 +65,7 @@ import { GetStopwatchTool } from 'llm-chat-time';
 const tool = new GetStopwatchTool(pool);
 const result = await tool.execute({ stopwatch_id });
 const { elapsed } = JSON.parse(result.result);
-console.log(elapsed); // "0:00:12.340" (d:HH:mm:ss.ms)
+console.log(elapsed); // "12.34s" (pretty-ms human-readable)
 ```
 
 ### Set and run a countdown timer
@@ -73,7 +73,7 @@ console.log(elapsed); // "0:00:12.340" (d:HH:mm:ss.ms)
 ```typescript
 import { TimerPool, CreateTimerTool, SetTimerTool, StartTimerTool } from 'llm-chat-time';
 
-const pool = new TimerPool();
+const pool = new TimerPool(/* service — see wire expiry section */);
 const create = new CreateTimerTool(pool);
 const set = new SetTimerTool(pool);
 const start = new StartTimerTool(pool);
@@ -88,26 +88,71 @@ await set.execute({ timer_id, time: '00:05:00' });
 await start.execute({ timer_id, reminder: 'Timer done!' });
 ```
 
-### Wire timer expiry to service interrupt
+### Wire timer expiry to ChatService
 
 ```typescript
-import { TimerPool, CreateTimerTool } from 'llm-chat-time';
+import { TimerPool, CreateTimerTool, type TimerService } from 'llm-chat-time';
 
-const pool = new TimerPool();
+// Provide a TimerService that defines what happens when a timer expires.
+// The pool passes the service to every timer it creates.
+
+// Option A: Callback shorthand (recommended for ChatService)
+const pool = new TimerPool(async (content: string) => {
+    await service.queue().assistant(content);
+    service.interrupt(true);
+    if (service.needsResend()) {
+        await service.send();
+    }
+});
+
+// Option B: Full TimerService interface
+class TimerChatAdapter implements TimerService {
+    constructor(private service: ChatService) {}
+
+    async notifyUser(content: string): Promise<void> {
+        await this.service.queue().assistant(content);
+        this.service.interrupt(true);
+        if (this.service.needsResend()) {
+            await this.service.send();
+        }
+    }
+}
+
+const pool = new TimerPool(new TimerChatAdapter(service));
+
 const createTimer = new CreateTimerTool(pool);
-
-// Create a timer via the tool (just like the LLM would)
-const { timer_id } = JSON.parse((await createTimer.execute({})).result);
-
-// Get the Timer instance and give it a service
-const timer = await pool.getTimer(timer_id);
-timer.service = {
-    interrupt: (fn) => service.interrupt(fn),
-    chatImpl: service.chatImpl,
-};
-// When this timer expires it will interrupt the LLM with a user message
+// When any timer expires, it calls notifyUser which can queue a message
+// and trigger the interrupt/send flow
 ```
+
+### Use packages
+
+Instead of constructing individual tools, use a package class to group them for registration:
+
+```typescript
+import { DateTimePackage, StopwatchPackage, TimerPackage, TimePackage } from 'llm-chat-time';
+
+// Standalone package
+const datePkg = new DateTimePackage();
+framework.registerPackage(datePkg); // registers GetDateTime + DiffDateTime
+
+// Composite package — all 16 tools at once
+const allPkg = new TimePackage();
+framework.registerPackage(allPkg);
+```
+
+Packages that rely on pools (`StopwatchPackage`, `TimerPackage`) create a default pool when none is provided. Pass an existing pool to share state across packages:
+
+```typescript
+import { StopwatchPool, TimerPool, TimePackage } from 'llm-chat-time';
+
+const timerPool = new TimerPool(myTimerService);
+const stopwatchPool = new StopwatchPool();
+const pkg = new TimePackage(timerPool, stopwatchPool);
+```
+
+Only `TimePackage` implements the optional `dispose()` method, which cleans up sub-packages.
 
 ## Next steps
 
-See the [API Reference](documentation.md) for full tool documentation and [Architecture](architecture.md) for design details.
+See the [API Reference](api-reference.md) for full tool documentation and [Architecture](architecture.md) for design details.

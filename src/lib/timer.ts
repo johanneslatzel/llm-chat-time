@@ -3,14 +3,8 @@ import parseDuration from 'parse-duration-ms';
 
 /** Service object that allows a {@link Timer} to interact with the chat layer. */
 export interface TimerService {
-    /**
-     * Interrupts the chat flow to surface a message.
-     * @param fn - Callback that typically calls `chatImpl.user()`.
-     * @param sendAfter - Whether the interruption should be sent after the current turn.
-     */
-    interrupt(fn: () => void | Promise<void>, sendAfter?: boolean): Promise<void>;
-    /** Allows injecting a message as if the user had sent it. */
-    chatImpl: { user(content: string): void };
+    /** Queue a user message, interrupt any in-flight LLM request, and trigger a re-send. */
+    notifyUser(content: string): Promise<void>;
 }
 
 /**
@@ -126,15 +120,17 @@ export class Timer {
                 clearInterval(this._tickInterval!);
                 this._tickInterval = null;
                 this.running = false;
-                this.service.interrupt(() => {
-                    const msg =
-                        this.reminder !== undefined
-                            ? `Timer "${this.id}" expired. Reminder: ${this.reminder}`
-                            : `Timer "${this.id}" expired.`;
-                    this.service.chatImpl.user(msg);
-                });
+                this._handleExpiry().catch(console.error);
             }
         }, 100);
+    }
+
+    private async _handleExpiry(): Promise<void> {
+        const msg =
+            this.reminder !== undefined
+                ? `Timer "${this.id}" expired. Reminder: ${this.reminder}`
+                : `Timer "${this.id}" expired.`;
+        await this.service.notifyUser(msg);
     }
 
     private _stopTick(): void {

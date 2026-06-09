@@ -1,14 +1,33 @@
 import { Pool } from './pool.js';
 import { Timer, type TimerService } from './timer.js';
 
+type TimerServiceOrCallback = TimerService | ((content: string) => Promise<void>);
+
 /** A pool that manages {@link Timer} instances with auto-incremented ids. */
 export class TimerPool extends Pool<Timer> {
+    private timerService: TimerService;
+
     /**
-     * @param timerService - Service passed to every new {@link Timer} so it
-     *                       can interrupt the chat when it expires.
+     * @param service - A {@link TimerService} instance or a callback that will be
+     *                  used as `notifyUser`. The callback shorthand lets consumers
+     *                  skip writing a full adapter class.
+     *
+     * @example
+     * ```ts
+     * // Callback shorthand (recommended)
+     * const pool = new TimerPool(async (content) => {
+     *     await service.queue().user(content);
+     *     service.interrupt(true);
+     *     if (service.needsResend()) await service.send();
+     * });
+     *
+     * // Full interface
+     * const pool = new TimerPool({ notifyUser: async (content) => { ... } });
+     * ```
      */
-    constructor(private timerService: TimerService) {
+    constructor(service: TimerServiceOrCallback) {
         super('timer');
+        this.timerService = typeof service === 'function' ? { notifyUser: service } : service;
     }
 
     /** @inheritdoc */

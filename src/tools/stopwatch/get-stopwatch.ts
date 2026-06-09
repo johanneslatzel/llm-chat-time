@@ -16,7 +16,7 @@ export class GetStopwatchTool extends Tool {
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'get_stopwatch',
-            'Returns the current elapsed time of a stopwatch as a human-readable string (e.g. "1h 30m"). Returns an error if elapsed time is 100 hours or more.',
+            'Returns the current elapsed time of a stopwatch as a human-readable string (e.g. "1h 30m").',
             new ToolParameters(
                 {
                     stopwatch_id: new ToolParameterProperty('The ID of the stopwatch to check.')
@@ -46,12 +46,6 @@ export class GetStopwatchTool extends Tool {
             }
 
             const elapsed = await sw.elapsedMs();
-            if (elapsed >= 360_000_000) {
-                return {
-                    result: 'Error: Elapsed time is 100 hours or more.',
-                    status: ResultStatus.Error
-                };
-            }
 
             return {
                 result: JSON.stringify({
