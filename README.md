@@ -14,7 +14,6 @@ A typed TypeScript package providing datetime, timer, and stopwatch tools for th
 ## Prerequisites
 
 - Node.js >= 18
-- [`@johannes.latzel/llm-chat`](https://github.com/johanneslatzel/llm-chat)
 
 ## Installation
 

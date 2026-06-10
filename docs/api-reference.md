@@ -174,14 +174,14 @@ const timer = new Timer('my-timer');
 
 **Properties:**
 
-| Property    | Type                        | Description                                      |
-|-------------|-----------------------------|--------------------------------------------------|
-| `id`        | `string`                    | Timer identifier.                                |
-| `durationMs`| `number`                    | Duration in milliseconds set via `set()` or tool.|
-| `remaining` | `number`                    | Remaining milliseconds.                          |
-| `running`   | `boolean`                   | Whether the timer is currently counting down.    |
-| `reminder`  | `string \| undefined`       | Reminder text set at start.                      |
-| `service`   | `TimerService \| undefined` | Service injected via `TimerPool` for expiry notification. |
+| Property     | Type                        | Description                                               |
+| ------------ | --------------------------- | --------------------------------------------------------- |
+| `id`         | `string`                    | Timer identifier.                                         |
+| `durationMs` | `number`                    | Duration in milliseconds set via `set()` or tool.         |
+| `remaining`  | `number`                    | Remaining milliseconds.                                   |
+| `running`    | `boolean`                   | Whether the timer is currently counting down.             |
+| `reminder`   | `string \| undefined`       | Reminder text set at start.                               |
+| `service`    | `TimerService \| undefined` | Service injected via `TimerPool` for expiry notification. |
 
 **`TimerService` interface:**
 

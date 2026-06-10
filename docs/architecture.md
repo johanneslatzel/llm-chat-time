@@ -88,12 +88,12 @@ interface ToolPackage {
 
 Four implementations exist:
 
-| Class | Tools | Constructor | `dispose()` |
-|-------|-------|-------------|-------------|
-| `DateTimePackage` | 2 (`GetDateTime`, `DiffDateTime`) | none | not implemented |
-| `StopwatchPackage` | 7 (create, start, stop, pause, get, list, remove) | optional `StopwatchPool` | not implemented |
-| `TimerPackage` | 7 (create, set, start, pause, get, list, remove) | optional `TimerPool` | not implemented |
-| `TimePackage` | 16 (all of the above) | optional `TimerPool`, `StopwatchPool` | implemented — delegates to sub-packages |
+| Class              | Tools                                             | Constructor                           | `dispose()`                             |
+| ------------------ | ------------------------------------------------- | ------------------------------------- | --------------------------------------- |
+| `DateTimePackage`  | 2 (`GetDateTime`, `DiffDateTime`)                 | none                                  | not implemented                         |
+| `StopwatchPackage` | 7 (create, start, stop, pause, get, list, remove) | optional `StopwatchPool`              | not implemented                         |
+| `TimerPackage`     | 7 (create, set, start, pause, get, list, remove)  | optional `TimerPool`                  | not implemented                         |
+| `TimePackage`      | 16 (all of the above)                             | optional `TimerPool`, `StopwatchPool` | implemented — delegates to sub-packages |
 
 `TimePackage` is a composite that wraps the other three. It aggregates all 16 tools via `flatMap` and provides `dispose()` for lifecycle cleanup.
 
