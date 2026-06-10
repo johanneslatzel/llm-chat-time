@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-time",
-    "version": "0.3.1",
+    "version": "0.3.2",
     "description": "Time tool for the llm-chat ecosystem",
     "license": "MIT",
     "files": [
