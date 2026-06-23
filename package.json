@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-time",
-    "version": "0.3.2",
+    "version": "0.4.0",
     "description": "Time tool for the llm-chat ecosystem",
     "license": "MIT",
     "files": [
@@ -47,6 +47,8 @@
         "docs": "docker run --rm -it -p 8000:8000 -v $PWD:/docs squidfunk/mkdocs-material",
         "test": "vitest",
         "test:coverage": "vitest run --coverage",
+        "clean:pack": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify && npm run build && npm pack",
+        "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
         "prepare": "husky"
     },
     "lint-staged": {
@@ -57,7 +59,7 @@
         ]
     },
     "dependencies": {
-        "@johannes.latzel/llm-chat": "^0.4.1",
+        "@johannes.latzel/llm-chat": "^0.6.0",
         "async-mutex": "^0.5.0",
         "parse-duration-ms": "^0.1.0",
         "pretty-ms": "^9.3.0"

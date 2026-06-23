@@ -1,10 +1,18 @@
 import { Mutex } from 'async-mutex';
 import parseDuration from 'parse-duration-ms';
 
+/** Event data passed to {@link TimerService.notify} when a timer expires. */
+export interface TimerEvent {
+    /** The id of the timer that expired. */
+    timerId: string;
+    /** Optional reminder text that was set when the timer was started. */
+    reminder: string | undefined;
+}
+
 /** Service object that allows a {@link Timer} to interact with the chat layer. */
 export interface TimerService {
-    /** Queue a user message, interrupt any in-flight LLM request, and trigger a re-send. */
-    notifyUser(content: string): Promise<void>;
+    /** Notify the chat layer that a timer has expired. */
+    notify(event: TimerEvent): Promise<void>;
 }
 
 /**
@@ -20,6 +28,8 @@ export class Timer {
     running = false;
     /** Optional text to surface when the timer expires. */
     reminder: string | undefined = undefined;
+    /** Callback invoked when the timer expires (after {@link service.notify}). */
+    onExpiry?: () => void | Promise<void>;
     private _startedAt: number | null = null;
     private _tickInterval: ReturnType<typeof setInterval> | null = null;
     private readonly mutex = new Mutex();
@@ -126,11 +136,8 @@ export class Timer {
     }
 
     private async _handleExpiry(): Promise<void> {
-        const msg =
-            this.reminder !== undefined
-                ? `Timer "${this.id}" expired. Reminder: ${this.reminder}`
-                : `Timer "${this.id}" expired.`;
-        await this.service.notifyUser(msg);
+        await this.service.notify({ timerId: this.id, reminder: this.reminder });
+        await this.onExpiry?.();
     }
 
     private _stopTick(): void {

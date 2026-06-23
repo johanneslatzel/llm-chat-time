@@ -6,26 +6,24 @@ import {
     ToolParameterProperty
 } from '@johannes.latzel/llm-chat';
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
+import prettyMilliseconds from 'pretty-ms';
 
-/** Tool that stops a running stopwatch. */
 export class StopStopwatchTool extends Tool {
-    /**
-     * @param stopwatchPool - The pool containing the stopwatch to stop.
-     */
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'stop_stopwatch',
-            'Stops a running stopwatch and returns success or an error message.',
+            'Stops and removes a stopwatch, returning the elapsed time.',
             new ToolParameters(
                 {
-                    stopwatch_id: new ToolParameterProperty('The ID of the stopwatch to stop.')
+                    stopwatch_id: ToolParameterProperty.string(
+                        'The ID of the stopwatch to stop and remove.'
+                    )
                 },
                 ['stopwatch_id']
             )
         );
     }
 
-    /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
         const swId = args.stopwatch_id;
         if (typeof swId !== 'string' || !swId.trim()) {
@@ -44,8 +42,10 @@ export class StopStopwatchTool extends Tool {
                 };
             }
             await sw.stop();
+            const elapsed = prettyMilliseconds(await sw.elapsedMs());
+            await this.stopwatchPool.remove(swId);
             return {
-                result: JSON.stringify({ stopwatch_id: swId, status: 'stopped' }),
+                result: JSON.stringify({ stopwatch_id: swId, elapsed }),
                 status: ResultStatus.Success
             };
         } catch (e) {

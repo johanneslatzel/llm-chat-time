@@ -1,51 +1,21 @@
-import {
-    PartialToolResult,
-    ResultStatus,
-    Tool,
-    ToolParameters,
-    ToolParameterProperty
-} from '@johannes.latzel/llm-chat';
+import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes.latzel/llm-chat';
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 
-/** Tool that starts an existing stopped or paused stopwatch. */
 export class StartStopwatchTool extends Tool {
-    /**
-     * @param stopwatchPool - The pool containing the stopwatch to start.
-     */
     constructor(private stopwatchPool: StopwatchPool) {
         super(
             'start_stopwatch',
-            'Starts an existing stopped or paused stopwatch by ID.',
-            new ToolParameters(
-                {
-                    stopwatch_id: new ToolParameterProperty('The ID of the stopwatch to start.')
-                },
-                ['stopwatch_id']
-            )
+            'Creates and immediately starts a new stopwatch with an auto-incremented name (e.g. stopwatch-1).',
+            new ToolParameters({})
         );
     }
 
-    /** @inheritdoc */
-    protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
-        const swId = args.stopwatch_id;
-        if (typeof swId !== 'string' || !swId.trim()) {
-            return {
-                result: 'stopwatch_id must be a non-empty string.',
-                status: ResultStatus.Error
-            };
-        }
-
+    protected async onExecute(_args: Record<string, unknown>): Promise<PartialToolResult> {
         try {
-            const sw = await this.stopwatchPool.get(swId);
-            if (!sw) {
-                return {
-                    result: `No stopwatch found with id '${swId}'`,
-                    status: ResultStatus.Error
-                };
-            }
+            const sw = await this.stopwatchPool.create();
             await sw.start();
             return {
-                result: JSON.stringify({ stopwatch_id: swId, status: 'started' }),
+                result: JSON.stringify({ stopwatch_id: sw.id }),
                 status: ResultStatus.Success
             };
         } catch (e) {

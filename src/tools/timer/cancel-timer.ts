@@ -7,18 +7,18 @@ import {
 } from '@johannes.latzel/llm-chat';
 import { TimerPool } from '../../lib/timer-pool.js';
 
-/** Tool that removes a timer by id. */
-export class RemoveTimerTool extends Tool {
+/** Tool that cancels and removes a timer by id. */
+export class CancelTimerTool extends Tool {
     /**
      * @param timerPool - The pool to remove the timer from.
      */
     constructor(private timerPool: TimerPool) {
         super(
-            'remove_timer',
-            'Removes a timer by id. If the timer is running, it will be stopped first.',
+            'cancel_timer',
+            'Cancels and removes a timer by id. If the timer is running, it will be stopped first.',
             new ToolParameters(
                 {
-                    timer_id: new ToolParameterProperty('The ID of the timer to remove.')
+                    timer_id: ToolParameterProperty.string('The ID of the timer to cancel.')
                 },
                 ['timer_id']
             )
@@ -35,7 +35,7 @@ export class RemoveTimerTool extends Tool {
         try {
             await this.timerPool.remove(timerId);
             return {
-                result: JSON.stringify({ timer_id: timerId, status: 'removed' }),
+                result: JSON.stringify({ timer_id: timerId, status: 'cancelled' }),
                 status: ResultStatus.Success
             };
         } catch (e) {

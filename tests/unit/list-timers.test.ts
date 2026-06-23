@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ListTimersTool, TimerPool } from '../../src/index.js';
 import { ResultStatus } from '@johannes.latzel/llm-chat';
 
-const mockService = { notifyUser: vi.fn().mockResolvedValue(undefined) };
+const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 
 describe('ListTimersTool', () => {
     let timerPool: TimerPool;
@@ -14,7 +14,7 @@ describe('ListTimersTool', () => {
     });
 
     it('returns empty list when no timers exist', async () => {
-        const result = await tool.execute({});
+        const result = (await tool.execute({}))[0]!;
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.tool).toBe('list_timers');
 
@@ -30,7 +30,7 @@ describe('ListTimersTool', () => {
         const t2 = await timerPool.create();
         await t2.set('2m');
 
-        const result = await tool.execute({});
+        const result = (await tool.execute({}))[0]!;
         const data = JSON.parse(result.result);
         expect(data.timers).toHaveLength(2);
 
@@ -50,14 +50,14 @@ describe('ListTimersTool', () => {
         await timer.set('1m');
         await timer.start('pasta is ready');
 
-        const result = await tool.execute({});
+        const result = (await tool.execute({}))[0]!;
         const data = JSON.parse(result.result);
         expect(data.timers[0].reminder).toBe('pasta is ready');
     });
 
     it('returns error when list throws', async () => {
         vi.spyOn(timerPool, 'list').mockRejectedValue(new Error('list failed'));
-        const result = await tool.execute({});
+        const result = (await tool.execute({}))[0]!;
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toBe('list failed');
     });

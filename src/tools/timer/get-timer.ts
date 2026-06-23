@@ -19,7 +19,7 @@ export class GetTimerTool extends Tool {
             'Returns the current state of a timer, including whether it is running, its duration, remaining time, and optional reminder.',
             new ToolParameters(
                 {
-                    timer_id: new ToolParameterProperty('The ID of the timer to get.')
+                    timer_id: ToolParameterProperty.string('The ID of the timer to get.')
                 },
                 ['timer_id']
             )

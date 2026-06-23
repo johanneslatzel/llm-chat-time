@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GetTimerTool, TimerPool } from '../../src/index.js';
 import { ResultStatus } from '@johannes.latzel/llm-chat';
 
-const mockService = { notifyUser: vi.fn().mockResolvedValue(undefined) };
+const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 
 describe('GetTimerTool', () => {
     let timerPool: TimerPool;
@@ -17,7 +17,7 @@ describe('GetTimerTool', () => {
         const timer = await timerPool.create();
         await timer.set('5m');
 
-        const result = await tool.execute({ timer_id: timer.id });
+        const result = (await tool.execute({ timer_id: timer.id }))[0]!;
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.tool).toBe('get_timer');
 
@@ -33,7 +33,7 @@ describe('GetTimerTool', () => {
         await timer.set('1m');
         await timer.start();
 
-        const result = await tool.execute({ timer_id: timer.id });
+        const result = (await tool.execute({ timer_id: timer.id }))[0]!;
         const data = JSON.parse(result.result);
         expect(data.running).toBe(true);
     });
@@ -43,24 +43,24 @@ describe('GetTimerTool', () => {
         await timer.set('1m');
         await timer.start('pasta is ready');
 
-        const result = await tool.execute({ timer_id: timer.id });
+        const result = (await tool.execute({ timer_id: timer.id }))[0]!;
         const data = JSON.parse(result.result);
         expect(data.reminder).toBe('pasta is ready');
     });
 
     it('returns error for missing timer_id', async () => {
-        const result = await tool.execute({});
+        const result = (await tool.execute({}))[0]!;
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('returns error for nonexistent timer_id', async () => {
-        const result = await tool.execute({ timer_id: 'nonexistent' });
+        const result = (await tool.execute({ timer_id: 'nonexistent' }))[0]!;
         expect(result.status).toBe(ResultStatus.Error);
     });
 
     it('returns error when pool.get throws', async () => {
         vi.spyOn(timerPool, 'get').mockRejectedValue(new Error('get failed'));
-        const result = await tool.execute({ timer_id: 'any' });
+        const result = (await tool.execute({ timer_id: 'any' }))[0]!;
         expect(result.status).toBe(ResultStatus.Error);
         expect(result.result).toBe('get failed');
     });

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { TimerPackage, TimerPool, CreateTimerTool, SetTimerTool, StartTimerTool } from '../../src/index.js';
+import { TimerPackage, TimerPool, StartTimerTool } from '../../src/index.js';
 import { ResultStatus } from '@johannes.latzel/llm-chat';
 
-const mockService = { notifyUser: vi.fn().mockResolvedValue(undefined) };
+const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 
 describe('TimerPackage', () => {
     afterEach(() => {
@@ -12,37 +12,39 @@ describe('TimerPackage', () => {
     it('creates tools without pool', () => {
         const pkg = new TimerPackage();
         const tools = pkg.tools();
-        expect(tools).toHaveLength(7);
-        expect(tools[0]!.constructor.name).toBe('CreateTimerTool');
-        expect(tools[6]!.constructor.name).toBe('RemoveTimerTool');
+        expect(tools).toHaveLength(5);
+        expect(tools[0]!.constructor.name).toBe('StartTimerTool');
+        expect(tools[4]!.constructor.name).toBe('TimerExpiredTool');
     });
 
     it('creates tools with provided pool', () => {
         const pool = new TimerPool(mockService);
         const pkg = new TimerPackage(pool);
         const tools = pkg.tools();
-        expect(tools).toHaveLength(7);
+        expect(tools).toHaveLength(5);
     });
 
     it('default timer service handles expiry without error', async () => {
         vi.useFakeTimers();
         const pkg = new TimerPackage();
         const tools = pkg.tools();
-        const createTool = tools[0] as unknown as CreateTimerTool;
-        const setTool = tools[1] as unknown as SetTimerTool;
-        const startTool = tools[2] as unknown as StartTimerTool;
+        const startTool = tools[0] as unknown as StartTimerTool;
 
-        const createResult = await createTool.execute({});
-        const { timer_id } = JSON.parse(createResult.result);
-        expect(createResult.status).toBe(ResultStatus.Success);
-
-        const setResult = await setTool.execute({ timer_id, time: '1s' });
-        expect(setResult.status).toBe(ResultStatus.Success);
-
-        const startResult = await startTool.execute({ timer_id, reminder: 'done' });
+        const startResult = (await startTool.execute({ time: '1s', reminder: 'done' }))[0]!;
         expect(startResult.status).toBe(ResultStatus.Success);
 
         vi.advanceTimersByTime(1000);
-        // Timer expired via defaultTimerService.notifyUser (console.log) — no error expected
+        // Timer expired via defaultTimerService.notify (console.log) — no error expected
+    });
+
+    it('default timer service handles expiry without reminder', async () => {
+        vi.useFakeTimers();
+        const pkg = new TimerPackage();
+        const tools = pkg.tools();
+        const startTool = tools[0] as unknown as StartTimerTool;
+
+        await startTool.execute({ time: '1s' });
+
+        vi.advanceTimersByTime(1000);
     });
 });

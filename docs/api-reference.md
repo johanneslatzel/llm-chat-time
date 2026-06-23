@@ -14,38 +14,30 @@ All tools return a `PartialToolResult` with shape:
 
 Time values (`duration`, `remaining`, `elapsed`) are returned as human-readable strings via `pretty-ms` (e.g. `"5m"`, `"1h 30m"`, `"12.34s"`).
 
-## GetDateTimeTool
+## TimeTool
 
-Returns the current date, time, and timezone.
+Returns the current date/time information or calculates a timespan between two ISO 8601 datetimes.
 
-**Tool name:** `get_datetime`
-
-**Parameters:** None
-
-**Returns:** JSON with `iso`, `locale`, `date`, `time`, `timezone`, `unix_ms`, `year`, `month`, `month_name`, `day_of_month`, `day_of_week`, `day_of_week_name`, `day_of_year`, `hours`, `minutes`, `seconds`, `milliseconds`.
-
----
-
-## DiffDateTimeTool
-
-Calculates the difference between two ISO 8601 datetime strings (`a - b`).
-
-**Tool name:** `diff_datetime`
+**Tool name:** `time`
 
 **Parameters:**
 
-| Parameter | Type   | Required | Description                                    |
-| --------- | ------ | -------- | ---------------------------------------------- |
-| `a`       | string | yes      | First datetime (ISO 8601).                     |
-| `b`       | string | yes      | Second datetime (ISO 8601). Result is `a - b`. |
+| Parameter | Type   | Required | Description                                                       |
+| --------- | ------ | -------- | ----------------------------------------------------------------- |
+| `from`    | string | no       | Start datetime (ISO 8601). Required if `to` is given.             |
+| `to`      | string | no       | End datetime (ISO 8601). Requires `from`.                         |
 
-**Returns:** `{ a, b, difference }` where `difference` is a human-readable duration string (e.g. `"1d 1h 30m"`).
+**Returns (no params):** JSON with `iso`, `locale`, `date`, `time`, `timezone`, `unix_ms`, `year`, `month`, `month_name`, `day_of_month`, `day_of_week`, `day_of_week_name`, `day_of_year`, `hours`, `minutes`, `seconds`, `milliseconds`.
+
+**Returns (from only):** `{ from, now, elapsed }` where `elapsed` is a human-readable duration (e.g. `"1h 30m"`).
+
+**Returns (from + to):** `{ from, to, timespan }` where `timespan` is a human-readable duration (e.g. `"1d 1h 30m"`).
 
 ---
 
 ## Stopwatch Tools
 
-Seven tools for measuring elapsed time. Stopwatches start from 0 and count up.
+Three tools for measuring elapsed time. Stopwatches start from 0 and count up.
 
 ### StopwatchPool
 
@@ -56,69 +48,27 @@ import { StopwatchPool } from 'llm-chat-time';
 const pool = new StopwatchPool();
 ```
 
-### CreateStopwatchTool
+### StartStopwatchTool
 
-Creates a new stopped stopwatch.
+Creates and immediately starts a new stopwatch.
 
-**Tool name:** `create_stopwatch`
+**Tool name:** `start_stopwatch`
 
 **Parameters:** None
 
 **Returns:** `{ stopwatch_id: "stopwatch-N" }`
 
-### StartStopwatchTool
-
-Starts an existing stopped or paused stopwatch by ID.
-
-**Tool name:** `start_stopwatch`
-
-**Parameters:**
-
-| Parameter      | Type   | Required | Description                   |
-| -------------- | ------ | -------- | ----------------------------- |
-| `stopwatch_id` | string | yes      | ID of the stopwatch to start. |
-
-**Returns:** `{ stopwatch_id, status: "started" }`
-
 ### StopStopwatchTool
 
-Stops a running stopwatch.
+Stops and removes a stopwatch, returning the elapsed time.
 
 **Tool name:** `stop_stopwatch`
 
 **Parameters:**
 
-| Parameter      | Type   | Required | Description                  |
-| -------------- | ------ | -------- | ---------------------------- |
-| `stopwatch_id` | string | yes      | ID of the stopwatch to stop. |
-
-**Returns:** `{ stopwatch_id, status: "stopped" }`
-
-### PauseStopwatchTool
-
-Pauses a running stopwatch. Elapsed time is preserved; resume with `start_stopwatch`.
-
-**Tool name:** `pause_stopwatch`
-
-**Parameters:**
-
-| Parameter      | Type   | Required | Description                   |
-| -------------- | ------ | -------- | ----------------------------- |
-| `stopwatch_id` | string | yes      | ID of the stopwatch to pause. |
-
-**Returns:** `{ stopwatch_id, status: "paused" }`
-
-### GetStopwatchTool
-
-Returns the current elapsed time of a stopwatch as a human-readable string.
-
-**Tool name:** `get_stopwatch`
-
-**Parameters:**
-
-| Parameter      | Type   | Required | Description                   |
-| -------------- | ------ | -------- | ----------------------------- |
-| `stopwatch_id` | string | yes      | ID of the stopwatch to check. |
+| Parameter      | Type   | Required | Description                            |
+| -------------- | ------ | -------- | -------------------------------------- |
+| `stopwatch_id` | string | yes      | ID of the stopwatch to stop and remove. |
 
 **Returns:** `{ stopwatch_id, elapsed: "5m 30s" }`
 
@@ -132,44 +82,28 @@ Lists all stopwatches with their current state and elapsed time.
 
 **Returns:** `{ stopwatches: [{ id, running, elapsed }] }`
 
-### RemoveStopwatchTool
-
-Removes a stopped or paused stopwatch. Cannot remove a running stopwatch.
-
-**Tool name:** `remove_stopwatch`
-
-**Parameters:**
-
-| Parameter      | Type   | Required | Description                    |
-| -------------- | ------ | -------- | ------------------------------ |
-| `stopwatch_id` | string | yes      | ID of the stopwatch to remove. |
-
-**Returns:** `{ stopwatch_id, status: "removed" }`
-
 ---
 
 ## Timer Tools
 
-Seven tools for creating and managing countdown timers. Timers count down from a set duration and can surface a reminder text when they expire.
+Five tools for countdown timers. `start_timer` creates, configures, and starts a timer in a single call. On expiry the timer auto-removes from the pool. Use `cancel_timer` to stop and remove a timer early.
 
 ### TimerPool
 
-Manages all timers — create, list, get, remove, clear. Timer expiry behavior is handled by the `Timer` itself via its `service` property, which is injected through the pool's constructor.
+Manages all timers — create, list, get, remove, clear.
 
 ```typescript
 import { TimerPool } from 'llm-chat-time';
-
 const pool = new TimerPool(myTimerService);
 ```
 
 ### Timer
 
-The `Timer` domain class handles countdown state and expiry behavior directly.
+The `Timer` domain class handles countdown state, expiry notification, and auto-removal.
 
 ```typescript
 import { Timer } from 'llm-chat-time';
-
-const timer = new Timer('my-timer');
+const timer = new Timer('my-timer', myService);
 ```
 
 **Properties:**
@@ -177,89 +111,64 @@ const timer = new Timer('my-timer');
 | Property     | Type                        | Description                                               |
 | ------------ | --------------------------- | --------------------------------------------------------- |
 | `id`         | `string`                    | Timer identifier.                                         |
-| `durationMs` | `number`                    | Duration in milliseconds set via `set()` or tool.         |
+| `durationMs` | `number`                    | Duration in milliseconds.                                 |
 | `remaining`  | `number`                    | Remaining milliseconds.                                   |
 | `running`    | `boolean`                   | Whether the timer is currently counting down.             |
 | `reminder`   | `string \| undefined`       | Reminder text set at start.                               |
-| `service`    | `TimerService \| undefined` | Service injected via `TimerPool` for expiry notification. |
+| `service`    | `TimerService`              | Service injected via `TimerPool` for expiry notification. |
 
 **`TimerService` interface:**
 
 ```typescript
 interface TimerService {
-    notifyUser(content: string): Promise<void>;
+    notify(event: TimerEvent): Promise<void>;
 }
 ```
 
-When the timer expires, it calls `service.notifyUser(msg)`. See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for wiring examples.
-
-### CreateTimerTool
-
-Creates a new stopped timer. Use `set_timer` to set the duration, then `start_timer` to begin.
-
-**Tool name:** `create_timer`
-
-**Parameters:** None
-
-**Returns:** `{ timer_id: "timer-N" }`
-
-### SetTimerTool
-
-Sets the duration of a non-running timer in HH:mm:ss format.
-
-**Tool name:** `set_timer`
-
-**Parameters:**
-
-| Parameter  | Type   | Required | Description                                                    |
-| ---------- | ------ | -------- | -------------------------------------------------------------- |
-| `timer_id` | string | yes      | ID of the timer to set.                                        |
-| `time`     | string | yes      | Duration in HH:mm:ss format (e.g. `"00:05:00"` for 5 minutes). |
-
-**Returns:** `{ timer_id, duration }`
+When the timer expires, it calls `service.notify(event)`. See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for wiring examples.
 
 ### StartTimerTool
 
-Starts a countdown timer. Provide optional reminder text to have it surfaced when the timer expires.
+Creates, configures, and starts a countdown timer in a single call. The timer auto-removes when it expires.
 
 **Tool name:** `start_timer`
 
 **Parameters:**
 
-| Parameter  | Type   | Required | Description                             |
-| ---------- | ------ | -------- | --------------------------------------- |
-| `timer_id` | string | yes      | ID of the timer to start.               |
-| `reminder` | string | no       | Text to surface when the timer expires. |
+| Parameter  | Type   | Required | Description                                                    |
+| ---------- | ------ | -------- | -------------------------------------------------------------- |
+| `time`     | string | yes      | Duration string (e.g. `"5m"`, `"1h30m"`, `"2 days 5 hours"`). |
+| `reminder` | string | no       | Text to surface when the timer expires.                        |
 
-**Returns:** `{ timer_id, status: "started", scheduled_end_at }`
+**Returns:** `{ timer_id, scheduled_end_at }`
 
-### PauseTimerTool
+### CancelTimerTool
 
-Pauses a running countdown timer. Resume later with `start_timer`.
+Cancels and removes a timer by id. Running timers are stopped first.
 
-**Tool name:** `pause_timer`
-
-**Parameters:**
-
-| Parameter  | Type   | Required | Description               |
-| ---------- | ------ | -------- | ------------------------- |
-| `timer_id` | string | yes      | ID of the timer to pause. |
-
-**Returns:** `{ timer_id, status: "paused" }`
-
-### RemoveTimerTool
-
-Removes a stopped, paused, or expired timer. Cannot remove a running timer.
-
-**Tool name:** `remove_timer`
+**Tool name:** `cancel_timer`
 
 **Parameters:**
 
-| Parameter  | Type   | Required | Description                |
-| ---------- | ------ | -------- | -------------------------- |
-| `timer_id` | string | yes      | ID of the timer to remove. |
+| Parameter  | Type   | Required | Description                 |
+| ---------- | ------ | -------- | --------------------------- |
+| `timer_id` | string | yes      | ID of the timer to cancel. |
 
-**Returns:** `{ timer_id, status: "removed" }`
+**Returns:** `{ timer_id, status: "cancelled" }`
+
+### GetTimerTool
+
+Returns the current state of a timer by id.
+
+**Tool name:** `get_timer`
+
+**Parameters:**
+
+| Parameter  | Type   | Required | Description              |
+| ---------- | ------ | -------- | ------------------------ |
+| `timer_id` | string | yes      | ID of the timer to get. |
+
+**Returns:** `{ timer_id, running, duration, remaining, reminder? }`
 
 ### ListTimersTool
 
@@ -277,23 +186,9 @@ Lists all timers with their current state and remaining time.
 
 The package classes group related tools for registration with the `llm-chat` framework. All implement the `ToolPackage` interface from `@johannes.latzel/llm-chat`.
 
-### DateTimePackage
-
-Groups the two datetime tools. No pools required.
-
-```typescript
-import { DateTimePackage } from 'llm-chat-time';
-const pkg = new DateTimePackage();
-const tools = pkg.tools(); // [GetDateTimeTool, DiffDateTimeTool]
-```
-
-- **Tools:** `GetDateTimeTool`, `DiffDateTimeTool` (2 tools)
-- **Constructor:** no parameters
-- **`dispose()`:** not implemented
-
 ### StopwatchPackage
 
-Groups the seven stopwatch tools. Creates a default `StopwatchPool` if none is provided.
+Groups the three stopwatch tools. Creates a default `StopwatchPool` if none is provided.
 
 ```typescript
 import { StopwatchPackage } from 'llm-chat-time';
@@ -302,13 +197,13 @@ const pkg = new StopwatchPackage();
 const pkg = new StopwatchPackage(myPool);
 ```
 
-- **Tools:** create, start, stop, pause, get, list, remove (7 tools)
+- **Tools:** start, stop, list (3 tools)
 - **Constructor:** optional `StopwatchPool`
 - **`dispose()`:** not implemented
 
 ### TimerPackage
 
-Groups the seven timer tools. Creates a default `TimerPool` (with a `console.log`-based expiry handler) if none is provided.
+Groups the five timer tools. Creates a default `TimerPool` (with a `console.log`-based expiry handler) if none is provided.
 
 ```typescript
 import { TimerPackage } from 'llm-chat-time';
@@ -317,13 +212,13 @@ const pkg = new TimerPackage();
 const pkg = new TimerPackage(myPool);
 ```
 
-- **Tools:** create, set, start, pause, get, list, remove (7 tools)
+- **Tools:** start, get, list, cancel, timer_expired (5 tools)
 - **Constructor:** optional `TimerPool`
 - **`dispose()`:** not implemented
 
 ### TimePackage
 
-Composite package that wraps `DateTimePackage`, `StopwatchPackage`, and `TimerPackage`. Aggregates all 16 tools.
+Composite package that bundles the time tool together with the stopwatch and timer sub-packages. Aggregates all 9 tools.
 
 ```typescript
 import { TimePackage } from 'llm-chat-time';
@@ -332,6 +227,6 @@ const pkg = new TimePackage();
 const pkg = new TimePackage(timerPool, stopwatchPool);
 ```
 
-- **Tools:** all 16 tools from the three sub-packages
+- **Tools:** time, start_stopwatch, stop_stopwatch, list_stopwatches, start_timer, get_timer, list_timers, cancel_timer, timer_expired (9 tools)
 - **Constructor:** optional `TimerPool`, optional `StopwatchPool`
 - **`dispose()`:** implemented — calls `dispose?.()` on each sub-package

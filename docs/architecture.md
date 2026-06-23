@@ -4,24 +4,6 @@
 
 `llm-chat-time` is a consumer tool package that extends the `llm-chat` framework with time-related tools. It provides datetime retrieval, stopwatch timing, and countdown timers.
 
-## Structure
-
-```
-src/
-├── index.ts               barrel exports
-├── lib/
-│   ├── stopwatch.ts       Stopwatch domain class
-│   ├── stopwatch-pool.ts  StopwatchPool (manages stopwatches)
-│   ├── timer.ts           Timer domain class
-│   └── timer-pool.ts      TimerPool (manages timers)
-├── packages/
-│   ├── date-time-package.ts  DateTimePackage (2 tools)
-│   ├── stopwatch-package.ts  StopwatchPackage (7 tools)
-│   ├── timer-package.ts      TimerPackage (7 tools)
-│   └── time-package.ts       TimePackage (composite, 16 tools)
-└── tools/                 15 tool classes (one per file)
-```
-
 ## Design
 
 ### Tool classes
@@ -38,42 +20,21 @@ Both `TimerPool` and `StopwatchPool` use `async-mutex` to protect shared `Map` s
 
 ### Stopwatch lifecycle
 
-```
-create_stopwatch → STOPPED → start_stopwatch → RUNNING ──→ pause_stopwatch → PAUSED
-                              ↑                                │
-                              └──────────────── start_stopwatch ┘
-                                                │
-                                                └──→ stop_stopwatch → STOPPED
-                                                                       ↓
-                                                             remove_stopwatch
-```
-
-Stopwatches count up from 0. Starting always resets elapsed to 0.
+`start_stopwatch` creates and immediately starts a stopwatch. `stop_stopwatch` stops, removes, and returns the elapsed time. `list_stopwatches` returns all active stopwatches with their current elapsed time.
 
 ### Timer lifecycle
 
-```
-create_timer → IDLE → set_timer → STOPPED → start_timer → RUNNING ──→ pause_timer → PAUSED
-                                        ↑                            │
-                                        │   (timer expires)          │ start_timer
-                                        └──── timer expires ←────────┴────────────┘
-                                              │
-                                              ├── Timer.service.notifyUser(...) (if set)
-                                              │
-                                              ↓
-                                       stays in pool (running=false, remaining=0)
-                                              │
-                                              ↓
-                                       remove_timer (removes from pool)
-```
-
-Timers count down from the set duration. On expiry they remain in the pool in a stopped state (`running=false`, `remaining=0`) for inspection.
+`start_timer({ time, reminder? })` creates, configures, and starts a timer in one call. When the countdown reaches zero, the timer calls `TimerService.notify(event)` and then auto-removes from the pool. `cancel_timer({ timer_id })` stops and removes a timer early.
 
 ### Timer expiry
 
-The `Timer` class has a `readonly service` property of type `TimerService`. When the timer expires, it calls `service.notifyUser(msg)`. The service is injected via `TimerPool` — each timer created by the pool receives the same service instance.
+The `Timer` class has a `readonly service` property of type `TimerService`. When the timer expires, it calls `service.notify(event)`. The service is injected via `TimerPool` — each timer created by the pool receives the same service instance.
 
-`TimerPool` accepts either a `TimerService` object or a callback function (shorthand for `{ notifyUser: fn }`). See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for usage examples.
+`TimerPool` accepts either a `TimerService` object or a callback function (shorthand for `(event: TimerEvent) => Promise<void>`). See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for usage examples.
+
+### TimerExpiredTool and TimerExpiryService
+
+`timer_expired` is a dummy tool that always returns `{ expired: false }` when the LLM invokes it directly. It exists solely to be registered alongside the other timer tools so that `TimerExpiryService` can synthesize a fake tool call — `TimerExpiryService.notify()` queues an assistant message with a synthetic `timer_expired` tool call, followed by a tool-role result from `TimerExpiredTool.fakeCall()` which returns the real `{ timer_id, expired: true }` payload.
 
 ### Package classes
 
@@ -86,16 +47,15 @@ interface ToolPackage {
 }
 ```
 
-Four implementations exist:
+Three implementations exist:
 
-| Class              | Tools                                             | Constructor                           | `dispose()`                             |
-| ------------------ | ------------------------------------------------- | ------------------------------------- | --------------------------------------- |
-| `DateTimePackage`  | 2 (`GetDateTime`, `DiffDateTime`)                 | none                                  | not implemented                         |
-| `StopwatchPackage` | 7 (create, start, stop, pause, get, list, remove) | optional `StopwatchPool`              | not implemented                         |
-| `TimerPackage`     | 7 (create, set, start, pause, get, list, remove)  | optional `TimerPool`                  | not implemented                         |
-| `TimePackage`      | 16 (all of the above)                             | optional `TimerPool`, `StopwatchPool` | implemented — delegates to sub-packages |
+| Class              | Tools                                                           | Constructor                           | `dispose()`     |
+| ------------------ | --------------------------------------------------------------- | ------------------------------------- | --------------- |
+| `StopwatchPackage` | 3 (start, stop, list)                                           | optional `StopwatchPool`              | not implemented |
+| `TimerPackage`     | 5 (start, get, list, cancel, timer_expired)                     | optional `TimerPool`                  | not implemented |
+| `TimePackage`      | 9 (time, stopwatch × 3, timer × 5)                              | optional `TimerPool`, `StopwatchPool` | not implemented |
 
-`TimePackage` is a composite that wraps the other three. It aggregates all 16 tools via `flatMap` and provides `dispose()` for lifecycle cleanup.
+`TimePackage` is the top-level composite. It includes the `TimeTool` directly plus the tools from `StopwatchPackage` and `TimerPackage`.
 
 ### Tick accuracy
 

@@ -6,33 +6,45 @@ import {
     ToolParameterProperty
 } from '@johannes.latzel/llm-chat';
 import { TimerPool } from '../../lib/timer-pool.js';
+import parseDuration from 'parse-duration-ms';
 
-/** Tool that starts a countdown timer, with an optional reminder. */
+/** Tool that creates, configures, and starts a countdown timer in one call. */
 export class StartTimerTool extends Tool {
     /**
-     * @param timerPool - The pool containing the timer to start.
+     * @param timerPool - The pool that will manage the new timer.
      */
     constructor(private timerPool: TimerPool) {
         super(
             'start_timer',
-            'Starts a countdown timer. Provide a reminder text to have it surfaced when the timer expires.',
+            'Creates and starts a countdown timer. Provide a duration string like "5m" or "1h30m". ' +
+                'The timer will automatically notify when it expires.',
             new ToolParameters(
                 {
-                    timer_id: new ToolParameterProperty('The ID of the timer to start.'),
-                    reminder: new ToolParameterProperty(
+                    time: ToolParameterProperty.string(
+                        'Duration string (e.g. "5m", "1h30m", "2 days 5 hours").'
+                    ),
+                    reminder: ToolParameterProperty.string(
                         'Optional text to surface when the timer expires.'
                     )
                 },
-                ['timer_id']
+                ['time']
             )
         );
     }
 
     /** @inheritdoc */
     protected async onExecute(args: Record<string, unknown>): Promise<PartialToolResult> {
-        const timerId = args.timer_id;
-        if (typeof timerId !== 'string' || !timerId.trim()) {
-            return { result: 'timer_id must be a non-empty string.', status: ResultStatus.Error };
+        const time = args.time;
+        if (typeof time !== 'string' || !time.trim()) {
+            return {
+                result: 'time must be a non-empty duration string.',
+                status: ResultStatus.Error
+            };
+        }
+
+        const ms = parseDuration(time);
+        if (ms === undefined || ms <= 0) {
+            return { result: 'Invalid or non-positive duration.', status: ResultStatus.Error };
         }
 
         const reminder = args.reminder;
@@ -41,20 +53,11 @@ export class StartTimerTool extends Tool {
         }
 
         try {
-            const timer = await this.timerPool.get(timerId);
-            if (!timer) {
-                return {
-                    result: `Error: No timer found with id '${timerId}'`,
-                    status: ResultStatus.Error
-                };
-            }
-
-            await timer.start(reminder as string | undefined);
+            const timer = await this.timerPool.start(time, reminder as string | undefined);
 
             return {
                 result: JSON.stringify({
-                    timer_id: timerId,
-                    status: 'started',
+                    timer_id: timer.id,
                     scheduled_end_at: new Date(Date.now() + timer.remaining).toISOString()
                 }),
                 status: ResultStatus.Success

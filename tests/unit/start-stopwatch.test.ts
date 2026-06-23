@@ -11,41 +11,33 @@ describe('StartStopwatchTool', () => {
         tool = new StartStopwatchTool(stopwatchPool);
     });
 
-    it('starts an existing stopped stopwatch by id', async () => {
-        const sw = await stopwatchPool.create();
-
-        const result = await tool.execute({ stopwatch_id: sw.id });
+    it('creates and starts a new stopwatch with auto-incremented id', async () => {
+        const result = (await tool.execute({}))[0]!;
         expect(result.status).toBe(ResultStatus.Success);
         expect(result.tool).toBe('start_stopwatch');
 
         const data = JSON.parse(result.result);
-        expect(data.stopwatch_id).toBe(sw.id);
-        expect(data.status).toBe('started');
+        expect(data.stopwatch_id).toBe('stopwatch-1');
     });
 
-    it('returns error for nonexistent stopwatch_id', async () => {
-        const result = await tool.execute({ stopwatch_id: 'nonexistent' });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('nonexistent');
+    it('increments id on each creation', async () => {
+        await tool.execute({});
+        const result = (await tool.execute({}))[0]!;
+        const data = JSON.parse(result.result);
+        expect(data.stopwatch_id).toBe('stopwatch-2');
     });
 
-    it('returns error for missing stopwatch_id', async () => {
-        const result = await tool.execute({});
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('stopwatch_id');
+    it('creates a running stopwatch', async () => {
+        const result = (await tool.execute({}))[0]!;
+        const data = JSON.parse(result.result);
+        const sw = await stopwatchPool.get(data.stopwatch_id);
+        expect(await sw?.isRunning()).toBe(true);
     });
 
-    it('returns error for non-string stopwatch_id', async () => {
-        const result = await tool.execute({ stopwatch_id: 42 });
+    it('returns error when create throws', async () => {
+        vi.spyOn(stopwatchPool, 'create').mockRejectedValue(new Error('pool error'));
+        const result = (await tool.execute({}))[0]!;
         expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toContain('stopwatch_id must be a');
-    });
-
-    it('returns error when start throws', async () => {
-        const sw = await stopwatchPool.create();
-        vi.spyOn(sw, 'start').mockRejectedValue(new Error('start failed'));
-        const result = await tool.execute({ stopwatch_id: sw.id });
-        expect(result.status).toBe(ResultStatus.Error);
-        expect(result.result).toBe('start failed');
+        expect(result.result).toBe('pool error');
     });
 });
