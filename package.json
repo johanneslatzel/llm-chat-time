@@ -1,6 +1,6 @@
 {
     "name": "@johannes.latzel/llm-chat-time",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "Time tool for the llm-chat ecosystem",
     "license": "MIT",
     "files": [
@@ -40,6 +40,8 @@
         }
     },
     "scripts": {
+        "prebuild": "rm -rf dist/",
+        "prepack": "npm run build",
         "build": "tsc -p tsconfig.build.json",
         "verify": "tsc --noEmit && eslint . --max-warnings 0 && vitest run --coverage",
         "lint": "eslint . --max-warnings 0",
@@ -49,7 +51,8 @@
         "test:coverage": "vitest run --coverage",
         "clean:pack": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify && npm run build && npm pack",
         "clean:install": "rm -rf node_modules dist/ package-lock.json && npm cache clean --force && npm install && npm run verify",
-        "prepare": "husky"
+        "prepare": "husky",
+        "audit": "npm audit --audit-level=high"
     },
     "lint-staged": {
         "src/**/*.ts": [
