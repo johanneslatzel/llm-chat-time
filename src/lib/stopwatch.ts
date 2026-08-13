@@ -23,6 +23,11 @@ export class Stopwatch {
         return this._running;
     }
 
+    /** Callback invoked when the stopwatch starts timing. */
+    onStart?: () => void;
+    /** Callback invoked when the stopwatch stops, with the final elapsed time. */
+    onStop?: (elapsedMs: number) => void;
+
     /**
      * Starts (or restarts) the stopwatch. Any previous elapsed time is reset to zero.
      * @throws If the stopwatch is already running.
@@ -36,6 +41,7 @@ export class Stopwatch {
             this._startedAt = Date.now();
             this._running = true;
             this._startTick();
+            this.onStart?.();
         });
     }
 
@@ -68,6 +74,7 @@ export class Stopwatch {
             this._elapsedMs = Date.now() - this._startedAt!;
             this._startedAt = null;
             this._running = false;
+            this.onStop?.(this._elapsedMs);
         });
     }
 

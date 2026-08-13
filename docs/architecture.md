@@ -2,7 +2,7 @@
 
 ## Overview
 
-`llm-chat-time` is a consumer tool package that extends the `llm-chat` framework with time-related tools. It provides datetime retrieval, stopwatch timing, and countdown timers.
+`llm-chat-time` is a consumer tool package that extends the `llm-chat` framework with time-related tools. It provides datetime retrieval, blocking sleep, stopwatch timing, and countdown timers.
 
 ## Design
 
@@ -21,6 +21,12 @@ Both `TimerPool` and `StopwatchPool` use `async-mutex` to protect shared `Map` s
 ### Stopwatch lifecycle
 
 `start_stopwatch` creates and immediately starts a stopwatch. `stop_stopwatch` stops, removes, and returns the elapsed time. `list_stopwatches` returns all active stopwatches with their current elapsed time.
+
+### Sleep lifecycle
+
+`sleep({ time? | until? })` blocks until the requested duration has passed or the given datetime is reached, then returns the actual elapsed time. It takes exactly one of `time` (duration string) or `until` (ISO 8601 datetime). The wait is a single `setTimeout`, so durations are limited to Node's maximum timer delay of `2**31 - 1` ms (~24.8 days); anything longer is rejected with an error.
+
+Each sleep is tracked by a `SleepRegistry` so it can be aborted early — for example when the host process is shutting down. The registry hands each sleep its own `AbortSignal`; aborting it clears the pending timer (so the event loop is not kept alive) and the sleep resolves to an error result instead of blocking until completion. `SleepTool` and `TimePackage` use a `SleepRegistry` in every case: pass your own instance to interrupt sleeps from outside, or omit it and an internal registry is created that simply lets sleeps run to completion.
 
 ### Timer lifecycle
 
@@ -49,13 +55,13 @@ interface ToolPackage {
 
 Three implementations exist:
 
-| Class              | Tools                                                           | Constructor                           | `dispose()`     |
-| ------------------ | --------------------------------------------------------------- | ------------------------------------- | --------------- |
-| `StopwatchPackage` | 3 (start, stop, list)                                           | optional `StopwatchPool`              | not implemented |
-| `TimerPackage`     | 5 (start, get, list, cancel, timer_expired)                     | optional `TimerPool`                  | not implemented |
-| `TimePackage`      | 9 (time, stopwatch × 3, timer × 5)                              | optional `TimerPool`, `StopwatchPool` | not implemented |
+| Class              | Tools                                                                  | Constructor                           | `dispose()`     |
+| ------------------ | ---------------------------------------------------------------------- | ------------------------------------- | --------------- |
+| `StopwatchPackage` | 3 (start, stop, list)                                                  | optional `StopwatchPool`              | not implemented |
+| `TimerPackage`     | 5 (start, get, list, cancel, timer_expired)                            | optional `TimerPool`                  | not implemented |
+| `TimePackage`      | 10 (time, sleep, stopwatch × 3, timer × 5)                             | optional `TimerPool`, `StopwatchPool`, `SleepRegistry` | not implemented |
 
-`TimePackage` is the top-level composite. It includes the `TimeTool` directly plus the tools from `StopwatchPackage` and `TimerPackage`.
+`TimePackage` is the top-level composite. It includes the `TimeTool` and `SleepTool` directly plus the tools from `StopwatchPackage` and `TimerPackage`.
 
 ### Tick accuracy
 
