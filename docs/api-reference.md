@@ -35,6 +35,27 @@ Returns the current date/time information or calculates a timespan between two I
 
 ---
 
+## Sleep Tool
+
+Blocks until a duration has passed or an absolute datetime is reached, then returns. Lets an agent wait without looping and polling the time.
+
+**Tool name:** `sleep`
+
+**Parameters:**
+
+| Parameter | Type   | Required | Description                                                             |
+| --------- | ------ | -------- | ----------------------------------------------------------------------- |
+| `time`    | string | no       | Duration string (e.g. `"5m"`, `"1h30m"`, `"2 days 5 hours"`). Mutually exclusive with `until`. |
+| `until`   | string | no       | ISO 8601 datetime to block until. Must be in the future. Mutually exclusive with `time`.      |
+
+Exactly one of `time` or `until` must be provided.
+
+**Returns:** `{ time | until, duration_ms, elapsed }` where `elapsed` is the actual time slept as a human-readable duration (e.g. `"5.01s"`). Durations are limited to Node's maximum `setTimeout` delay of `2**31 - 1` ms (~24.8 days); anything longer is rejected with an error.
+
+**Interruption:** every sleep is registered with a `SleepRegistry`. Pass your own instance to the `SleepTool`/`TimePackage` constructor to abort sleeps early (e.g. on shutdown); when omitted, an internal registry is created and sleeps simply run to completion. Aborting a sleep clears the pending timer and the tool returns an error result (`"Sleep was interrupted."`) instead of blocking until completion.
+
+---
+
 ## Stopwatch Tools
 
 Three tools for measuring elapsed time. Stopwatches start from 0 and count up.
@@ -218,15 +239,15 @@ const pkg = new TimerPackage(myPool);
 
 ### TimePackage
 
-Composite package that bundles the time tool together with the stopwatch and timer sub-packages. Aggregates all 9 tools.
+Composite package that bundles the time and sleep tools together with the stopwatch and timer sub-packages. Aggregates all 10 tools.
 
 ```typescript
 import { TimePackage } from 'llm-chat-time';
 const pkg = new TimePackage();
-// or with existing pools:
-const pkg = new TimePackage(timerPool, stopwatchPool);
+// or with existing pools and a sleep registry:
+const pkg = new TimePackage(timerPool, stopwatchPool, sleepRegistry);
 ```
 
-- **Tools:** time, start_stopwatch, stop_stopwatch, list_stopwatches, start_timer, get_timer, list_timers, cancel_timer, timer_expired (9 tools)
-- **Constructor:** optional `TimerPool`, optional `StopwatchPool`
+- **Tools:** time, sleep, start_stopwatch, stop_stopwatch, list_stopwatches, start_timer, get_timer, list_timers, cancel_timer, timer_expired (10 tools)
+- **Constructor:** optional `TimerPool`, optional `StopwatchPool`, optional `SleepRegistry` (forwarded to the sleep tool; an internal registry is created when omitted)
 - **`dispose()`:** implemented — calls `dispose?.()` on each sub-package

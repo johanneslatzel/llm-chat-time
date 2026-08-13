@@ -28,6 +28,8 @@ export class Timer {
     running = false;
     /** Optional text to surface when the timer expires. */
     reminder: string | undefined = undefined;
+    /** Whether this timer has reached zero. Set when the countdown expires. */
+    expired = false;
     /** Callback invoked when the timer expires (after {@link service.notify}). */
     onExpiry?: () => void | Promise<void>;
     private _startedAt: number | null = null;
@@ -116,6 +118,7 @@ export class Timer {
             this.reminder = undefined;
             this._startedAt = null;
             this.running = false;
+            this.expired = false;
         });
     }
 
@@ -136,6 +139,7 @@ export class Timer {
     }
 
     private async _handleExpiry(): Promise<void> {
+        this.expired = true;
         await this.service.notify({ timerId: this.id, reminder: this.reminder });
         await this.onExpiry?.();
     }
