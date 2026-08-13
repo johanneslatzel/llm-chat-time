@@ -114,6 +114,27 @@ describe('Timer', () => {
         vi.useRealTimers();
     });
 
+    it('marks the timer as expired when the countdown reaches zero', async () => {
+        vi.useFakeTimers();
+        const timer = new Timer('timer-1', mockService);
+        await timer.set('1s');
+        await timer.start();
+        await vi.advanceTimersByTimeAsync(1200);
+        expect(timer.expired).toBe(true);
+        vi.useRealTimers();
+    });
+
+    it('reset clears the expired flag', async () => {
+        vi.useFakeTimers();
+        const timer = new Timer('timer-1', mockService);
+        await timer.set('1s');
+        await timer.start();
+        await vi.advanceTimersByTimeAsync(1200);
+        await timer.reset();
+        expect(timer.expired).toBe(false);
+        vi.useRealTimers();
+    });
+
     it('resets timer state', async () => {
         const timer = new Timer('timer-1', mockService);
         await timer.set('5m');

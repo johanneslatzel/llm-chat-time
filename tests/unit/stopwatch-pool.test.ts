@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StopwatchPool } from '../../src/index.js';
 
 describe('StopwatchPool', () => {
@@ -63,4 +63,63 @@ describe('StopwatchPool', () => {
     });
 
 
+});
+
+
+describe('StopwatchPool hooks', () => {
+    it('onStart fires when a stopwatch starts', async () => {
+        const pool = new StopwatchPool();
+        const onStart = vi.fn();
+        pool.hook().onStart().do(onStart);
+        const sw = await pool.create();
+        await sw.start();
+        expect(onStart).toHaveBeenCalledWith({ id: 'stopwatch-1' });
+    });
+
+    it('onStop fires with the elapsed time when a stopwatch stops', async () => {
+        const pool = new StopwatchPool();
+        const onStop = vi.fn();
+        pool.hook().onStop().do(onStop);
+        const sw = await pool.create();
+        await sw.start();
+        await sw.stop();
+        expect(onStop).toHaveBeenCalledTimes(1);
+        const event = onStop.mock.calls[0]![0]! as { id: string; elapsedMs: number };
+        expect(event.id).toBe('stopwatch-1');
+        expect(event.elapsedMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('does not fire onStop for a stopwatch that was paused', async () => {
+        const pool = new StopwatchPool();
+        const onStop = vi.fn();
+        pool.hook().onStop().do(onStop);
+        const sw = await pool.create();
+        await sw.start();
+        await sw.pause();
+        expect(onStop).not.toHaveBeenCalled();
+    });
+
+    it('dispose unsubscribes a registered hook', async () => {
+        const pool = new StopwatchPool();
+        const onStart = vi.fn();
+        const hook = pool.hook().onStart().do(onStart);
+        hook.dispose();
+        const sw = await pool.create();
+        await sw.start();
+        expect(onStart).not.toHaveBeenCalled();
+    });
+
+    it('a throwing callback does not break other callbacks', async () => {
+        const pool = new StopwatchPool();
+        const bad = vi.fn(() => {
+            throw new Error('boom');
+        });
+        const good = vi.fn();
+        pool.hook().onStop().do(bad);
+        pool.hook().onStop().do(good);
+        const sw = await pool.create();
+        await sw.start();
+        await sw.stop();
+        expect(good).toHaveBeenCalledTimes(1);
+    });
 });

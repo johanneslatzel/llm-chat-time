@@ -17,6 +17,7 @@ Timers that interrupt the chat when they expire. Also stopwatches and datetime. 
 
 - countdown timers inject `timer_expired` tool calls into the conversation on expiry and interrupt the LLM to have it react to the event
 - `time`: returns current date, time, timezone, day-of-year; calculates elapsed time or duration between two ISO 8601 datetimes or elapsed time since datetime
+- `sleep`: blocks until a duration has passed or an absolute datetime is reached, so agents can wait without polling
 - stopwatches track time
 
 ## Prerequisites
