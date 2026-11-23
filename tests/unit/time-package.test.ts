@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { TimePackage, TimerPool, StopwatchPool, SleepRegistry } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 

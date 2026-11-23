@@ -1,12 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TimerPackage, TimerPool, StartTimerTool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 
 describe('TimerPackage', () => {
     afterEach(() => {
         vi.useRealTimers();
+        vi.restoreAllMocks();
     });
 
     it('creates tools without pool', () => {
@@ -26,6 +27,7 @@ describe('TimerPackage', () => {
 
     it('default timer service handles expiry without error', async () => {
         vi.useFakeTimers();
+        const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
         const pkg = new TimerPackage();
         const tools = pkg.tools();
         const startTool = tools[0] as unknown as StartTimerTool;
@@ -34,11 +36,12 @@ describe('TimerPackage', () => {
         expect(startResult.status).toBe(ResultStatus.Success);
 
         vi.advanceTimersByTime(1000);
-        // Timer expired via defaultTimerService.notify (console.log) — no error expected
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('Reminder: done'));
     });
 
     it('default timer service handles expiry without reminder', async () => {
         vi.useFakeTimers();
+        const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
         const pkg = new TimerPackage();
         const tools = pkg.tools();
         const startTool = tools[0] as unknown as StartTimerTool;
@@ -46,5 +49,6 @@ describe('TimerPackage', () => {
         await startTool.execute({ time: '1s' });
 
         vi.advanceTimersByTime(1000);
+        expect(log).toHaveBeenCalledWith(expect.stringContaining('expired'));
     });
 });

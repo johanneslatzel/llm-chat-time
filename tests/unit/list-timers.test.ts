@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ListTimersTool, TimerPool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 
@@ -37,8 +37,12 @@ describe('ListTimersTool', () => {
         const running = data.timers.find((t: Record<string, unknown>) => t.id === t1.id);
         expect(running).toBeDefined();
         expect(running.running).toBe(true);
-        expect(running.duration).toMatch(/^-?\d+(\.\d+)?(ms|s|m|h|d)(\s+\d+(\.\d+)?(ms|s|m|h|d))*$/);
-        expect(running.remaining).toMatch(/^-?\d+(\.\d+)?(ms|s|m|h|d)(\s+\d+(\.\d+)?(ms|s|m|h|d))*$/);
+        expect(running.duration).toMatch(
+            /^-?\d+(\.\d+)?(ms|s|m|h|d)(\s+\d+(\.\d+)?(ms|s|m|h|d))*$/
+        );
+        expect(running.remaining).toMatch(
+            /^-?\d+(\.\d+)?(ms|s|m|h|d)(\s+\d+(\.\d+)?(ms|s|m|h|d))*$/
+        );
 
         const stopped = data.timers.find((t: Record<string, unknown>) => t.id === t2.id);
         expect(stopped).toBeDefined();

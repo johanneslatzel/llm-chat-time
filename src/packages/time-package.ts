@@ -1,4 +1,4 @@
-import { ToolPackage } from '@johannes.latzel/llm-chat';
+import { ToolPackage } from '@johannes.latzel/llm-chat-tool';
 import { TimeTool } from '../tools/datetime/time-tool.js';
 import { SleepTool } from '../tools/sleep/sleep-tool.js';
 import { SleepRegistry } from '../lib/sleep-registry.js';
@@ -14,7 +14,7 @@ import { TimerPackage } from './timer-package.js';
  *
  * @example
  * ```ts
- * import { TimePackage } from 'llm-chat-time';
+ * import { TimePackage } from '@johannes.latzel/llm-chat-time';
  * const pkg = new TimePackage();
  * const tools = pkg.tools(); // 10 tools
  * ```

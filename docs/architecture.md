@@ -8,11 +8,11 @@
 
 ### Tool classes
 
-Each tool extends `Tool` from `llm-chat`:
+Each tool extends `Tool` from `@johannes.latzel/llm-chat-tool`:
 
 1. Constructor accepts dependencies (pools) and calls `super(name, description, params)`
 2. `onExecute()` validates parameters (`typeof` guards), delegates to the pool, returns `PartialToolResult`
-3. All errors are caught and returned as plain-string messages — tools never throw
+3. All errors are caught and returned as plain-string messages; tools never throw
 
 ### Pools and concurrency
 
@@ -26,48 +26,58 @@ Both `TimerPool` and `StopwatchPool` use `async-mutex` to protect shared `Map` s
 
 `sleep({ time? | until? })` blocks until the requested duration has passed or the given datetime is reached, then returns the actual elapsed time. It takes exactly one of `time` (duration string) or `until` (ISO 8601 datetime). The wait is a single `setTimeout`, so durations are limited to Node's maximum timer delay of `2**31 - 1` ms (~24.8 days); anything longer is rejected with an error.
 
-Each sleep is tracked by a `SleepRegistry` so it can be aborted early — for example when the host process is shutting down. The registry hands each sleep its own `AbortSignal`; aborting it clears the pending timer (so the event loop is not kept alive) and the sleep resolves to an error result instead of blocking until completion. `SleepTool` and `TimePackage` use a `SleepRegistry` in every case: pass your own instance to interrupt sleeps from outside, or omit it and an internal registry is created that simply lets sleeps run to completion.
+Each sleep is tracked by a `SleepRegistry` so it can be aborted early, for example when the host process is shutting down. The registry hands each sleep its own `AbortSignal`; aborting it clears the pending timer (so the event loop is not kept alive) and the sleep resolves to an error result instead of blocking until completion. `SleepTool` and `TimePackage` use a `SleepRegistry` in every case: pass a caller-supplied instance to interrupt sleeps from outside, or omit it and an internal registry is created that lets sleeps run to completion.
 
 ### Timer lifecycle
 
 `start_timer({ time, reminder? })` creates, configures, and starts a timer in one call. When the countdown reaches zero, the timer calls `TimerService.notify(event)` and then auto-removes from the pool. `cancel_timer({ timer_id })` stops and removes a timer early.
 
+### Pool hooks
+
+`TimerPool` and `StopwatchPool` expose lifecycle hooks through `hook()`. Timer events are `onStart`, `onExpire` and `onCancel`; stopwatch events are `onStart` and `onStop`. `.do(callback)` returns a `Hook` whose `dispose()` unsubscribes the callback. Hook errors are logged and never break the timer or stopwatch operation.
+
 ### Timer expiry
 
-The `Timer` class has a `readonly service` property of type `TimerService`. When the timer expires, it calls `service.notify(event)`. The service is injected via `TimerPool` — each timer created by the pool receives the same service instance.
+The `Timer` class has a `readonly service` property of type `TimerService`. When the timer expires, it calls `service.notify(event)`. The service is injected via `TimerPool`; each timer created by the pool receives the same service instance.
 
-`TimerPool` accepts either a `TimerService` object or a callback function (shorthand for `(event: TimerEvent) => Promise<void>`). See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for usage examples.
+`TimerPool` accepts either a `TimerService` object or a callback function (shorthand for `(event: TimerEvent) => Promise<void>`). See the [Quick Start](quickstart.md#timer-expiry) for usage examples.
 
 ### TimerExpiredTool and TimerExpiryService
 
-`timer_expired` is a dummy tool that always returns `{ expired: false }` when the LLM invokes it directly. It exists solely to be registered alongside the other timer tools so that `TimerExpiryService` can synthesize a fake tool call — `TimerExpiryService.notify()` queues an assistant message with a synthetic `timer_expired` tool call, followed by a tool-role result from `TimerExpiredTool.fakeCall()` which returns the real `{ timer_id, expired: true }` payload.
+`timer_expired` is a dummy tool that always returns `{ expired: false }` when the LLM invokes it directly. It exists solely to be registered alongside the other timer tools so that `TimerExpiryService` can synthesize a fake tool call: `TimerExpiryService.notify()` queues an assistant message with a synthetic `timer_expired` tool call, followed by a tool-role result from `TimerExpiredTool.fakeCall()` which returns the real `{ timer_id, expired: true }` payload.
 
 ### Package classes
 
-The `ToolPackage` interface (from `@johannes.latzel/llm-chat`) groups related tools for registration:
+The `ToolPackage` abstract class (from `@johannes.latzel/llm-chat-tool`) groups related tools for registration:
 
 ```typescript
-interface ToolPackage {
+abstract class ToolPackage {
+    constructor(tools?: Tool[]);
     tools(): Tool[];
-    dispose?(): void | Promise<void>;
+    protected add(tool: Tool): void;
+    tutorial(): string | null;
 }
 ```
 
-Three implementations exist:
+Three subclasses exist:
 
-| Class              | Tools                                                                  | Constructor                           | `dispose()`     |
-| ------------------ | ---------------------------------------------------------------------- | ------------------------------------- | --------------- |
-| `StopwatchPackage` | 3 (start, stop, list)                                                  | optional `StopwatchPool`              | not implemented |
-| `TimerPackage`     | 5 (start, get, list, cancel, timer_expired)                            | optional `TimerPool`                  | not implemented |
-| `TimePackage`      | 10 (time, sleep, stopwatch × 3, timer × 5)                             | optional `TimerPool`, `StopwatchPool`, `SleepRegistry` | not implemented |
+| Class              | Tools                                       | Constructor                                            |
+| ------------------ | ------------------------------------------- | ------------------------------------------------------ |
+| `StopwatchPackage` | 3 (start, stop, list)                       | optional `StopwatchPool`                               |
+| `TimerPackage`     | 5 (start, get, list, cancel, timer_expired) | optional `TimerPool`                                   |
+| `TimePackage`      | 10 (time, sleep, stopwatch × 3, timer × 5)  | optional `TimerPool`, `StopwatchPool`, `SleepRegistry` |
 
 `TimePackage` is the top-level composite. It includes the `TimeTool` and `SleepTool` directly plus the tools from `StopwatchPackage` and `TimerPackage`.
 
 ### Tick accuracy
 
-Both `Timer` and `Stopwatch` use a closure-based tick pattern. On each tick, elapsed is computed as `Date.now() - startedAt`, compensating for `setInterval` drift.
+Both `Timer` and `Stopwatch` use a closure-based tick pattern. The stopwatch recomputes elapsed time on each tick as `Date.now() - startedAt`. The timer recomputes `remaining` as `remainingAtStart - elapsed`, where `remainingAtStart` is captured when the countdown starts and `elapsed` is `Date.now() - startedAt`. Anchoring both values to the start timestamp keeps `setInterval` drift from accumulating.
 
 ## Dependencies
 
-- `llm-chat` — framework providing `Tool`, `ToolParameters`, etc.
-- `async-mutex` — concurrency protection for shared state
+- `@johannes.latzel/env` reads environment variables.
+- `@johannes.latzel/llm-chat-message` provides `MessageWriter` and `ToolCall` for the synthetic expiry messages.
+- `@johannes.latzel/llm-chat-tool` provides `Tool`, `ToolParameters`, and `ToolPackage`.
+- `async-mutex` protects shared pool and domain-object state.
+- `parse-duration-ms` parses duration strings such as `"5m"`.
+- `pretty-ms` formats durations for tool results.

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { StopStopwatchTool, StopwatchPool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 describe('StopStopwatchTool', () => {
     let stopwatchPool: StopwatchPool;

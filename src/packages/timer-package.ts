@@ -1,4 +1,4 @@
-import { ToolPackage } from '@johannes.latzel/llm-chat';
+import { ToolPackage } from '@johannes.latzel/llm-chat-tool';
 import { TimerPool } from '../lib/timer-pool.js';
 import { type TimerService } from '../lib/timer.js';
 import { StartTimerTool } from '../tools/timer/start-timer.js';
@@ -7,7 +7,7 @@ import { GetTimerTool } from '../tools/timer/get-timer.js';
 import { ListTimersTool } from '../tools/timer/list-timers.js';
 import { TimerExpiredTool } from '../tools/timer/timer-expired.js';
 
-const defaultTimerService: TimerService = {
+const DEFAULT_TIMER_SERVICE: TimerService = {
     notify: async (event) => {
         const parts = [`[timer] "${event.timerId}" expired`];
         if (event.reminder) parts.push(`Reminder: ${event.reminder}`);
@@ -22,7 +22,7 @@ const defaultTimerService: TimerService = {
  *
  * @example
  * ```ts
- * import { TimerPackage, TimerPool } from 'llm-chat-time';
+ * import { TimerPackage, TimerPool } from '@johannes.latzel/llm-chat-time';
  * const pkg = new TimerPackage();
  * const tools = pkg.tools(); // 5 timer tools
  *
@@ -37,7 +37,7 @@ export class TimerPackage extends ToolPackage {
      *               `console.log`-based service is created when omitted.
      */
     constructor(pool?: TimerPool) {
-        const p = pool ?? new TimerPool(defaultTimerService);
+        const p = pool ?? new TimerPool(DEFAULT_TIMER_SERVICE);
         super([
             new StartTimerTool(p),
             new GetTimerTool(p),

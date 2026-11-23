@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TimeTool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 describe('TimeTool', () => {
     it('returns current datetime when no params given', async () => {
@@ -46,10 +46,12 @@ describe('TimeTool', () => {
 
     it('returns timespan when both from and to given', async () => {
         const tool = new TimeTool();
-        const result = (await tool.execute({
-            from: '2025-01-14T10:30:00.000Z',
-            to: '2025-01-15T10:30:00.000Z'
-        }))[0]!;
+        const result = (
+            await tool.execute({
+                from: '2025-01-14T10:30:00.000Z',
+                to: '2025-01-15T10:30:00.000Z'
+            })
+        )[0]!;
         expect(result.status).toBe(ResultStatus.Success);
 
         const data = JSON.parse(result.result);
@@ -73,7 +75,9 @@ describe('TimeTool', () => {
 
     it('returns error for invalid to', async () => {
         const tool = new TimeTool();
-        const result = (await tool.execute({ from: '2025-01-14T10:30:00.000Z', to: 'invalid' }))[0]!;
+        const result = (
+            await tool.execute({ from: '2025-01-14T10:30:00.000Z', to: 'invalid' })
+        )[0]!;
         expect(result.status).toBe(ResultStatus.Error);
     });
 

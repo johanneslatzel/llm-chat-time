@@ -1,4 +1,4 @@
-import { type HasHooks, type Hook } from '@johannes.latzel/llm-chat';
+import { type HasHooks, type Hook } from '@johannes.latzel/llm-chat-tool';
 import { Pool } from './pool.js';
 import { Timer, type TimerService, type TimerEvent } from './timer.js';
 import { EventHookBuilder, HookEmitter } from './hooks.js';
@@ -59,7 +59,7 @@ export class TimerHookBuilder {
 
 /** A pool that manages {@link Timer} instances with auto-incremented ids. */
 export class TimerPool extends Pool<Timer> implements HasHooks<TimerHookBuilder> {
-    private timerService: TimerService;
+    private readonly timerService: TimerService;
     private readonly onStartEmitter = new HookEmitter<(event: TimerStartEvent) => void>();
     private readonly onExpireEmitter = new HookEmitter<(event: TimerExpireEvent) => void>();
     private readonly onCancelEmitter = new HookEmitter<(event: TimerCancelEvent) => void>();

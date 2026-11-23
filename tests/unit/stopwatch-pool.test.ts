@@ -61,10 +61,7 @@ describe('StopwatchPool', () => {
         await pool.create();
         expect(await pool.list()).toHaveLength(2);
     });
-
-
 });
-
 
 describe('StopwatchPool hooks', () => {
     it('onStart fires when a stopwatch starts', async () => {

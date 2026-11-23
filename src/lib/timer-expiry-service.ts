@@ -1,37 +1,32 @@
-import { type MessageWriter, type ToolCall } from '@johannes.latzel/llm-chat';
+import { envString } from '@johannes.latzel/env';
+import { type MessageWriter, type ToolCall } from '@johannes.latzel/llm-chat-message';
 import { type TimerService, type TimerEvent } from './timer.js';
 import { TimerExpiredTool } from '../tools/timer/timer-expired.js';
 
 const RANDOM_RANGE = 1_000_000_000;
 
+/** Callback facade used by {@link TimerExpiryService}. */
+export interface TimerChatFacade {
+    queue(): MessageWriter;
+    interrupt(needsResend?: boolean): void;
+    send(): Promise<void>;
+}
+
 /**
- * {@link TimerService} that imitates a tool call when a timer expires.
- *
- * Queues an assistant message with a synthetic `timer_expired` tool call,
- * followed by a tool-role message with the result from
- * {@link TimerExpiredTool.fakeCall}.
- *
- * @example
- * ```ts
- * import { TimerPool, TimerExpiryService } from 'llm-chat-time';
- * const pool = new TimerPool(new TimerExpiryService(service));
- * ```
+ * {@link TimerService} that queues a synthetic `timer_expired` tool call when
+ * a timer expires and interrupts the chat so the model resumes.
  */
 export class TimerExpiryService implements TimerService {
     private tool = new TimerExpiredTool();
 
     constructor(
-        private chat: {
-            queue(): MessageWriter;
-            interrupt(needsResend?: boolean): void;
-            send(): Promise<void>;
-        },
+        private chat: TimerChatFacade,
         private assistantMessage?: string
     ) {}
 
     async notify(event: TimerEvent): Promise<void> {
         const content =
-            this.assistantMessage ?? process.env.LLM_CHAT_TIME_TIMER_EXPIRED_MESSAGE ?? '';
+            this.assistantMessage ?? envString('LLM_CHAT_TIME_TIMER_EXPIRED_MESSAGE', '');
         const toolCallId = `${event.timerId}-expired-${Math.floor(Math.random() * RANDOM_RANGE)}`;
 
         const toolCall: ToolCall = {

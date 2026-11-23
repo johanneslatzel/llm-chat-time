@@ -4,7 +4,7 @@ import {
     Tool,
     ToolParameters,
     ToolParameterProperty
-} from '@johannes.latzel/llm-chat';
+} from '@johannes.latzel/llm-chat-tool';
 import { TimerPool } from '../../lib/timer-pool.js';
 
 /** Tool that cancels and removes a timer by id. */

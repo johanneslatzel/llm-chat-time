@@ -4,7 +4,7 @@ import {
     Tool,
     ToolParameters,
     ToolParameterProperty
-} from '@johannes.latzel/llm-chat';
+} from '@johannes.latzel/llm-chat-tool';
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 import prettyMilliseconds from 'pretty-ms';
 

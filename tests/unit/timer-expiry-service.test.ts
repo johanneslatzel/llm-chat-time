@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { TimerExpiryService, TimerExpiredTool } from '../../src/index.js';
-import type { ToolCall } from '@johannes.latzel/llm-chat';
+import type { ToolCall } from '@johannes.latzel/llm-chat-message';
 
 describe('TimerExpiryService', () => {
     const originalEnv = process.env.LLM_CHAT_TIME_TIMER_EXPIRED_MESSAGE;
@@ -17,7 +17,7 @@ describe('TimerExpiryService', () => {
     function createChat() {
         const queue = {
             assistant: vi.fn(),
-            tool: vi.fn(),
+            tool: vi.fn()
         };
         const chat = {
             queue: vi.fn().mockReturnValue(queue),

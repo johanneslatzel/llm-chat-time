@@ -1,4 +1,4 @@
-import { Hook, HookBuilderBase } from '@johannes.latzel/llm-chat';
+import { Hook, HookBuilderBase } from '@johannes.latzel/llm-chat-tool';
 
 class RegistrationHook extends Hook {
     constructor(private readonly unsubscribe: () => void) {
@@ -13,9 +13,9 @@ class RegistrationHook extends Hook {
 /**
  * Best-effort event emitter for pool lifecycle hooks. Callbacks run
  * synchronously and must never break the operation that emitted the event:
- * thrown errors and rejected promises are swallowed.
+ * thrown errors and rejected promises are logged.
  */
-export class HookEmitter<TCallback extends (...args: any[]) => void> {
+export class HookEmitter<TCallback extends (...args: never[]) => unknown> {
     private readonly callbacks = new Set<TCallback>();
 
     /** Register a callback and return a {@link Hook} to unsubscribe it. */
@@ -30,14 +30,14 @@ export class HookEmitter<TCallback extends (...args: any[]) => void> {
     emit(...args: Parameters<TCallback>): void {
         for (const callback of this.callbacks) {
             try {
-                const result = (callback as (...emitArgs: Parameters<TCallback>) => unknown)(
-                    ...args
-                );
+                const result = callback(...args);
                 if (result instanceof Promise) {
-                    result.catch(() => {});
+                    result.catch((error: unknown) => {
+                        console.error('Hook callback error:', error);
+                    });
                 }
-            } catch {
-                // observers must never break the emitting operation
+            } catch (error) {
+                console.error('Hook callback error:', error);
             }
         }
     }

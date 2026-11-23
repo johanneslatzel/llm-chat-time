@@ -1,6 +1,12 @@
 site_name: llm-chat-time
 site_url: https://johanneslatzel.github.io/llm-chat-time/
 repo_url: https://github.com/johanneslatzel/llm-chat-time
+nav:
+  - Overview: index.md
+  - Quick Start: quickstart.md
+  - Architecture: architecture.md
+  - API Reference: api-reference.md
+  - Environment Variables: env.md
 theme:
   name: material
   palette:

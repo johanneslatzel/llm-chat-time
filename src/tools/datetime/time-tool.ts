@@ -4,7 +4,7 @@ import {
     Tool,
     ToolParameters,
     ToolParameterProperty
-} from '@johannes.latzel/llm-chat';
+} from '@johannes.latzel/llm-chat-tool';
 import prettyMilliseconds from 'pretty-ms';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];

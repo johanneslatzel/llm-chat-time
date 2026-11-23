@@ -4,7 +4,7 @@ import {
     Tool,
     ToolParameters,
     ToolParameterProperty
-} from '@johannes.latzel/llm-chat';
+} from '@johannes.latzel/llm-chat-tool';
 import parseDuration from 'parse-duration-ms';
 import prettyMilliseconds from 'pretty-ms';
 import { SleepRegistry } from '../../lib/sleep-registry.js';

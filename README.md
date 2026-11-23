@@ -22,7 +22,7 @@ Timers that interrupt the chat when they expire. Also stopwatches and datetime. 
 
 ## Prerequisites
 
-- Node.js >= 18
+- Node.js >= 22
 
 ## Installation
 
@@ -34,10 +34,10 @@ npm install @johannes.latzel/llm-chat-time
 
 Full documentation at **[johanneslatzel.github.io/llm-chat-time/](https://johanneslatzel.github.io/llm-chat-time/)**
 
-## License
-
-MIT — see [`LICENSE`](LICENSE).
-
 ## Contributing
 
 Issues and PRs welcome at [github.com/johanneslatzel/llm-chat-time](https://github.com/johanneslatzel/llm-chat-time).
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

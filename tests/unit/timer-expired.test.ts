@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TimerExpiredTool } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 describe('TimerExpiredTool', () => {
     it('returns expired false on normal invocation', async () => {

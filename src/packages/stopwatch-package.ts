@@ -1,4 +1,4 @@
-import { ToolPackage } from '@johannes.latzel/llm-chat';
+import { ToolPackage } from '@johannes.latzel/llm-chat-tool';
 import { StopwatchPool } from '../lib/stopwatch-pool.js';
 import { StartStopwatchTool } from '../tools/stopwatch/start-stopwatch.js';
 import { StopStopwatchTool } from '../tools/stopwatch/stop-stopwatch.js';

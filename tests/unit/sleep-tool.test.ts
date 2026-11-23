@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { SleepTool, SleepRegistry } from '../../src/index.js';
-import { ResultStatus } from '@johannes.latzel/llm-chat';
+import { ResultStatus } from '@johannes.latzel/llm-chat-tool';
 
 describe('SleepTool', () => {
     const tool = new SleepTool(new SleepRegistry());
@@ -96,7 +96,6 @@ describe('SleepTool', () => {
         expect(result.result).toContain('in the past');
     });
 });
-
 
 describe('SleepTool with registry', () => {
     it('registers and unregisters sleeps while they run', async () => {

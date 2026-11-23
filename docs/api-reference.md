@@ -2,15 +2,16 @@
 
 ## Common patterns
 
-All tools return a `PartialToolResult` with shape:
+Every tool implements `onExecute()` and returns a `PartialToolResult`:
 
 ```typescript
 {
     status: ResultStatus.Success | ResultStatus.Error;
     result: string; // JSON string on success, error message on failure
-    tool: string; // tool name, e.g. "start_stopwatch"
 }
 ```
+
+`Tool.execute()` wraps each result in a `ToolResult`, which adds the `tool` name (e.g. `"start_stopwatch"`) and an optional `error` field.
 
 Time values (`duration`, `remaining`, `elapsed`) are returned as human-readable strings via `pretty-ms` (e.g. `"5m"`, `"1h 30m"`, `"12.34s"`).
 
@@ -22,10 +23,10 @@ Returns the current date/time information or calculates a timespan between two I
 
 **Parameters:**
 
-| Parameter | Type   | Required | Description                                                       |
-| --------- | ------ | -------- | ----------------------------------------------------------------- |
-| `from`    | string | no       | Start datetime (ISO 8601). Required if `to` is given.             |
-| `to`      | string | no       | End datetime (ISO 8601). Requires `from`.                         |
+| Parameter | Type   | Required | Description                                           |
+| --------- | ------ | -------- | ----------------------------------------------------- |
+| `from`    | string | no       | Start datetime (ISO 8601). Required if `to` is given. |
+| `to`      | string | no       | End datetime (ISO 8601). Requires `from`.             |
 
 **Returns (no params):** JSON with `iso`, `locale`, `date`, `time`, `timezone`, `unix_ms`, `year`, `month`, `month_name`, `day_of_month`, `day_of_week`, `day_of_week_name`, `day_of_year`, `hours`, `minutes`, `seconds`, `milliseconds`.
 
@@ -43,16 +44,16 @@ Blocks until a duration has passed or an absolute datetime is reached, then retu
 
 **Parameters:**
 
-| Parameter | Type   | Required | Description                                                             |
-| --------- | ------ | -------- | ----------------------------------------------------------------------- |
+| Parameter | Type   | Required | Description                                                                                    |
+| --------- | ------ | -------- | ---------------------------------------------------------------------------------------------- |
 | `time`    | string | no       | Duration string (e.g. `"5m"`, `"1h30m"`, `"2 days 5 hours"`). Mutually exclusive with `until`. |
-| `until`   | string | no       | ISO 8601 datetime to block until. Must be in the future. Mutually exclusive with `time`.      |
+| `until`   | string | no       | ISO 8601 datetime to block until. Must be in the future. Mutually exclusive with `time`.       |
 
 Exactly one of `time` or `until` must be provided.
 
 **Returns:** `{ time | until, duration_ms, elapsed }` where `elapsed` is the actual time slept as a human-readable duration (e.g. `"5.01s"`). Durations are limited to Node's maximum `setTimeout` delay of `2**31 - 1` ms (~24.8 days); anything longer is rejected with an error.
 
-**Interruption:** every sleep is registered with a `SleepRegistry`. Pass your own instance to the `SleepTool`/`TimePackage` constructor to abort sleeps early (e.g. on shutdown); when omitted, an internal registry is created and sleeps simply run to completion. Aborting a sleep clears the pending timer and the tool returns an error result (`"Sleep was interrupted."`) instead of blocking until completion.
+**Interruption:** every sleep is registered with a `SleepRegistry`. Pass a caller-supplied instance to the `SleepTool`/`TimePackage` constructor to abort sleeps early (e.g. on shutdown); when omitted, an internal registry is created and sleeps run to completion. Aborting a sleep clears the pending timer and the tool returns an error result (`"Sleep was interrupted."`) instead of blocking until completion.
 
 ---
 
@@ -65,7 +66,7 @@ Three tools for measuring elapsed time. Stopwatches start from 0 and count up.
 Manages stopwatch instances. Pass an instance to tool constructors.
 
 ```typescript
-import { StopwatchPool } from 'llm-chat-time';
+import { StopwatchPool } from '@johannes.latzel/llm-chat-time';
 const pool = new StopwatchPool();
 ```
 
@@ -87,8 +88,8 @@ Stops and removes a stopwatch, returning the elapsed time.
 
 **Parameters:**
 
-| Parameter      | Type   | Required | Description                            |
-| -------------- | ------ | -------- | -------------------------------------- |
+| Parameter      | Type   | Required | Description                             |
+| -------------- | ------ | -------- | --------------------------------------- |
 | `stopwatch_id` | string | yes      | ID of the stopwatch to stop and remove. |
 
 **Returns:** `{ stopwatch_id, elapsed: "5m 30s" }`
@@ -111,10 +112,10 @@ Five tools for countdown timers. `start_timer` creates, configures, and starts a
 
 ### TimerPool
 
-Manages all timers — create, list, get, remove, clear.
+Manages all timers: create, list, get, remove, clear.
 
 ```typescript
-import { TimerPool } from 'llm-chat-time';
+import { TimerPool } from '@johannes.latzel/llm-chat-time';
 const pool = new TimerPool(myTimerService);
 ```
 
@@ -123,20 +124,22 @@ const pool = new TimerPool(myTimerService);
 The `Timer` domain class handles countdown state, expiry notification, and auto-removal.
 
 ```typescript
-import { Timer } from 'llm-chat-time';
+import { Timer } from '@johannes.latzel/llm-chat-time';
 const timer = new Timer('my-timer', myService);
 ```
 
 **Properties:**
 
-| Property     | Type                        | Description                                               |
-| ------------ | --------------------------- | --------------------------------------------------------- |
-| `id`         | `string`                    | Timer identifier.                                         |
-| `durationMs` | `number`                    | Duration in milliseconds.                                 |
-| `remaining`  | `number`                    | Remaining milliseconds.                                   |
-| `running`    | `boolean`                   | Whether the timer is currently counting down.             |
-| `reminder`   | `string \| undefined`       | Reminder text set at start.                               |
-| `service`    | `TimerService`              | Service injected via `TimerPool` for expiry notification. |
+| Property     | Type                                         | Description                                               |
+| ------------ | -------------------------------------------- | --------------------------------------------------------- |
+| `id`         | `string`                                     | Timer identifier.                                         |
+| `durationMs` | `number`                                     | Duration in milliseconds.                                 |
+| `remaining`  | `number`                                     | Remaining milliseconds.                                   |
+| `running`    | `boolean`                                    | Whether the timer is currently counting down.             |
+| `reminder`   | `string \| undefined`                        | Reminder text set at start.                               |
+| `service`    | `TimerService`                               | Service injected via `TimerPool` for expiry notification. |
+| `expired`    | `boolean`                                    | Whether the timer has reached zero.                       |
+| `onExpiry`   | `(() => void \| Promise<void>) \| undefined` | Callback invoked after `service.notify`.                  |
 
 **`TimerService` interface:**
 
@@ -146,7 +149,22 @@ interface TimerService {
 }
 ```
 
-When the timer expires, it calls `service.notify(event)`. See the [Quick Start](quickstart.md#wire-timer-expiry-to-chatservice) for wiring examples.
+When the timer expires, it calls `service.notify(event)`. See the [Quick Start](quickstart.md#timer-expiry) for wiring examples.
+
+### TimerExpiryService
+
+`TimerService` implementation that queues a synthetic `timer_expired` tool call and interrupts the chat so the model resumes.
+
+```typescript
+new TimerExpiryService(chat, assistantMessage?)
+```
+
+| Param              | Type              | Required | Description                                                                                       |
+| ------------------ | ----------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `chat`             | `TimerChatFacade` | yes      | Host facade providing `queue()`, `interrupt()` and `send()`.                                      |
+| `assistantMessage` | `string`          | no       | Message queued before the synthetic tool call. Defaults to `LLM_CHAT_TIME_TIMER_EXPIRED_MESSAGE`. |
+
+`TimerChatFacade` is the exported structural interface: `queue(): MessageWriter`, `interrupt(needsResend?: boolean): void`, `send(): Promise<void>`.
 
 ### StartTimerTool
 
@@ -156,10 +174,10 @@ Creates, configures, and starts a countdown timer in a single call. The timer au
 
 **Parameters:**
 
-| Parameter  | Type   | Required | Description                                                    |
-| ---------- | ------ | -------- | -------------------------------------------------------------- |
+| Parameter  | Type   | Required | Description                                                   |
+| ---------- | ------ | -------- | ------------------------------------------------------------- |
 | `time`     | string | yes      | Duration string (e.g. `"5m"`, `"1h30m"`, `"2 days 5 hours"`). |
-| `reminder` | string | no       | Text to surface when the timer expires.                        |
+| `reminder` | string | no       | Text to surface when the timer expires.                       |
 
 **Returns:** `{ timer_id, scheduled_end_at }`
 
@@ -171,8 +189,8 @@ Cancels and removes a timer by id. Running timers are stopped first.
 
 **Parameters:**
 
-| Parameter  | Type   | Required | Description                 |
-| ---------- | ------ | -------- | --------------------------- |
+| Parameter  | Type   | Required | Description                |
+| ---------- | ------ | -------- | -------------------------- |
 | `timer_id` | string | yes      | ID of the timer to cancel. |
 
 **Returns:** `{ timer_id, status: "cancelled" }`
@@ -185,8 +203,8 @@ Returns the current state of a timer by id.
 
 **Parameters:**
 
-| Parameter  | Type   | Required | Description              |
-| ---------- | ------ | -------- | ------------------------ |
+| Parameter  | Type   | Required | Description             |
+| ---------- | ------ | -------- | ----------------------- |
 | `timer_id` | string | yes      | ID of the timer to get. |
 
 **Returns:** `{ timer_id, running, duration, remaining, reminder? }`
@@ -203,51 +221,102 @@ Lists all timers with their current state and remaining time.
 
 ---
 
+## Supporting Classes
+
+### Stopwatch
+
+| Method        | Returns            | Description                                 |
+| ------------- | ------------------ | ------------------------------------------- |
+| `start()`     | `Promise<void>`    | Starts or restarts the stopwatch from zero. |
+| `pause()`     | `Promise<void>`    | Pauses timing and preserves elapsed time.   |
+| `stop()`      | `Promise<void>`    | Stops timing and invokes `onStop`.          |
+| `elapsedMs()` | `Promise<number>`  | Current elapsed milliseconds.               |
+| `isRunning()` | `Promise<boolean>` | Whether the stopwatch is timing.            |
+| `reset()`     | `Promise<void>`    | Returns the stopwatch to its stopped state. |
+
+| Property  | Type                                         | Description                          |
+| --------- | -------------------------------------------- | ------------------------------------ |
+| `id`      | `string`                                     | Stopwatch identifier.                |
+| `running` | `boolean`                                    | Whether the stopwatch is timing.     |
+| `onStart` | `(() => void) \| undefined`                  | Callback invoked when timing starts. |
+| `onStop`  | `((elapsedMs: number) => void) \| undefined` | Callback invoked when timing stops.  |
+
+### SleepRegistry
+
+| Method               | Returns       | Description                                          |
+| -------------------- | ------------- | ---------------------------------------------------- |
+| `register()`         | `AbortSignal` | Registers a sleep and returns its abort signal.      |
+| `unregister(signal)` | `void`        | Removes a settled sleep.                             |
+| `abortAll()`         | `number`      | Aborts every registered sleep and returns the count. |
+| `active`             | `number`      | Number of in-flight sleeps.                          |
+
+## Pool Hooks
+
+`TimerPool.hook()` returns a `TimerHookBuilder`; `StopwatchPool.hook()` returns a `StopwatchHookBuilder`. Each selector method returns an `EventHookBuilder`; call `.do(callback)` to subscribe. The returned `Hook` has a `dispose()` method that unsubscribes the callback.
+
+| Builder                | Method       | Event payload                                   |
+| ---------------------- | ------------ | ----------------------------------------------- |
+| `TimerHookBuilder`     | `onStart()`  | `{ id, durationMs, reminder?, scheduledEndAt }` |
+| `TimerHookBuilder`     | `onExpire()` | `{ id, reminder? }`                             |
+| `TimerHookBuilder`     | `onCancel()` | `{ id }`                                        |
+| `StopwatchHookBuilder` | `onStart()`  | `{ id }`                                        |
+| `StopwatchHookBuilder` | `onStop()`   | `{ id, elapsedMs }`                             |
+
+```typescript
+import { TimerPool } from '@johannes.latzel/llm-chat-time';
+
+const pool = new TimerPool({ notify: async () => {} });
+const hook = pool
+    .hook()
+    .onExpire()
+    .do((event) => {
+        console.log(event.id, event.reminder);
+    });
+hook.dispose();
+```
+
 ## Package classes
 
-The package classes group related tools for registration with the `llm-chat` framework. All implement the `ToolPackage` interface from `@johannes.latzel/llm-chat`.
+The package classes group related tools for registration with the `llm-chat` framework. All extend the `ToolPackage` abstract class from `@johannes.latzel/llm-chat-tool`.
 
 ### StopwatchPackage
 
 Groups the three stopwatch tools. Creates a default `StopwatchPool` if none is provided.
 
 ```typescript
-import { StopwatchPackage } from 'llm-chat-time';
+import { StopwatchPackage } from '@johannes.latzel/llm-chat-time';
 const pkg = new StopwatchPackage();
 // or with an existing pool:
-const pkg = new StopwatchPackage(myPool);
+const pkgWithPool = new StopwatchPackage(myPool);
 ```
 
 - **Tools:** start, stop, list (3 tools)
 - **Constructor:** optional `StopwatchPool`
-- **`dispose()`:** not implemented
 
 ### TimerPackage
 
 Groups the five timer tools. Creates a default `TimerPool` (with a `console.log`-based expiry handler) if none is provided.
 
 ```typescript
-import { TimerPackage } from 'llm-chat-time';
+import { TimerPackage } from '@johannes.latzel/llm-chat-time';
 const pkg = new TimerPackage();
 // or with an existing pool:
-const pkg = new TimerPackage(myPool);
+const pkgWithPool = new TimerPackage(myPool);
 ```
 
 - **Tools:** start, get, list, cancel, timer_expired (5 tools)
 - **Constructor:** optional `TimerPool`
-- **`dispose()`:** not implemented
 
 ### TimePackage
 
 Composite package that bundles the time and sleep tools together with the stopwatch and timer sub-packages. Aggregates all 10 tools.
 
 ```typescript
-import { TimePackage } from 'llm-chat-time';
+import { TimePackage } from '@johannes.latzel/llm-chat-time';
 const pkg = new TimePackage();
 // or with existing pools and a sleep registry:
-const pkg = new TimePackage(timerPool, stopwatchPool, sleepRegistry);
+const pkgWithPools = new TimePackage(timerPool, stopwatchPool, sleepRegistry);
 ```
 
 - **Tools:** time, sleep, start_stopwatch, stop_stopwatch, list_stopwatches, start_timer, get_timer, list_timers, cancel_timer, timer_expired (10 tools)
 - **Constructor:** optional `TimerPool`, optional `StopwatchPool`, optional `SleepRegistry` (forwarded to the sleep tool; an internal registry is created when omitted)
-- **`dispose()`:** implemented — calls `dispose?.()` on each sub-package

@@ -1,4 +1,9 @@
-import { PartialToolResult, ResultStatus, Tool, ToolParameters } from '@johannes.latzel/llm-chat';
+import {
+    PartialToolResult,
+    ResultStatus,
+    Tool,
+    ToolParameters
+} from '@johannes.latzel/llm-chat-tool';
 import { StopwatchPool } from '../../lib/stopwatch-pool.js';
 import prettyMilliseconds from 'pretty-ms';
 

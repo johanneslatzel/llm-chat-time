@@ -17,7 +17,7 @@ export {
     type TimerExpireEvent,
     type TimerCancelEvent
 } from './lib/timer-pool.js';
-export { TimerExpiryService } from './lib/timer-expiry-service.js';
+export { TimerExpiryService, type TimerChatFacade } from './lib/timer-expiry-service.js';
 export { SleepRegistry } from './lib/sleep-registry.js';
 export { Stopwatch } from './lib/stopwatch.js';
 export {

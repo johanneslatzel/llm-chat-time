@@ -4,7 +4,6 @@ import { TimerPool } from '../../src/index.js';
 const mockService = { notify: vi.fn().mockResolvedValue(undefined) };
 
 describe('TimerPool', () => {
-
     it('creates timers with auto-incremented names', async () => {
         const pool = new TimerPool(mockService);
         const t1 = await pool.create();
@@ -183,4 +182,3 @@ describe('TimerPool hooks', () => {
         expect(good).toHaveBeenCalledTimes(1);
     });
 });
-

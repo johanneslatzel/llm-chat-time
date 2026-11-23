@@ -1,4 +1,4 @@
-import { type HasHooks, type Hook } from '@johannes.latzel/llm-chat';
+import { type HasHooks, type Hook } from '@johannes.latzel/llm-chat-tool';
 import { Pool } from './pool.js';
 import { Stopwatch } from './stopwatch.js';
 import { EventHookBuilder, HookEmitter } from './hooks.js';
